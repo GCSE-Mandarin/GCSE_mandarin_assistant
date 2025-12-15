@@ -27,7 +27,7 @@ export const StudentDashboard: React.FC<Props> = ({ studentName, onSelectLesson,
   }, [studentName]);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="bg-slate-50">
       <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
           <div className="bg-blue-100 p-2 rounded-lg">
@@ -56,7 +56,7 @@ export const StudentDashboard: React.FC<Props> = ({ studentName, onSelectLesson,
         </div>
       </header>
 
-      <main className="flex-1 p-6 max-w-5xl mx-auto w-full">
+      <main className="p-6 max-w-5xl mx-auto w-full pb-12">
         
         {/* Practice Vocabulary Section */}
         <div className="mb-8">
