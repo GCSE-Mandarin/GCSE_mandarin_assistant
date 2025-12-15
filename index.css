@@ -28,32 +28,49 @@
 
 /* Ensure body and html allow scrolling on mobile */
 html {
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  height: auto !important;
+  position: relative;
 }
 
 body {
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  position: relative;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  position: relative !important;
+  height: auto !important;
+  min-height: 100vh;
+  touch-action: pan-y !important;
 }
 
 /* Prevent touch-action issues on iOS */
 * {
   -webkit-tap-highlight-color: transparent;
+  touch-action: pan-y;
 }
 
-/* Ensure scrolling works on iOS */
+/* Ensure scrolling works on iOS - aggressive fixes */
 @media (max-width: 768px) {
   html, body {
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
     height: auto !important;
-    min-height: 100vh;
+    min-height: 100vh !important;
+    max-height: none !important;
+    position: relative !important;
+    touch-action: pan-y !important;
   }
   
   #root {
-    min-height: 100vh;
+    min-height: 100vh !important;
+    height: auto !important;
+    overflow: visible !important;
+    position: relative !important;
+  }
+  
+  /* Force all containers to allow scrolling */
+  div {
+    touch-action: pan-y;
   }
 }
 
