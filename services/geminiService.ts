@@ -3,14 +3,20 @@ import { GoogleGenAI, Type, Modality } from "@google/genai";
 import OpenAI from "openai";
 import { Exercise, VocabWord, WordDetails } from "../types";
 
-// Helper to get key from storage or env
+// Helper to get key from env (Netlify) or localStorage (fallback for backwards compatibility)
 const getApiKey = () => {
-  return localStorage.getItem('mandarin_app_api_key') || process.env.API_KEY || '';
+  // Vite exposes env vars prefixed with VITE_ to client-side code
+  return import.meta.env.VITE_GEMINI_API_KEY || 
+         localStorage.getItem('mandarin_app_api_key') || 
+         '';
 };
 
-// Helper to get OpenAI API key from storage
+// Helper to get OpenAI API key from env (Netlify) or localStorage (fallback)
 const getOpenAIApiKey = () => {
-  return localStorage.getItem('mandarin_app_openai_key') || process.env.OPENAI_API_KEY || '';
+  // Vite exposes env vars prefixed with VITE_ to client-side code
+  return import.meta.env.VITE_OPENAI_API_KEY || 
+         localStorage.getItem('mandarin_app_openai_key') || 
+         '';
 };
 
 // Helper for exponential backoff retry

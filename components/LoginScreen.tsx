@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { GraduationCap, BookOpen, ChevronRight, User, Key, X, Check } from 'lucide-react';
+import React, { useState } from 'react';
+import { GraduationCap, BookOpen, ChevronRight, User } from 'lucide-react';
 
 interface Props {
   onTutorSelect: () => void;
@@ -9,38 +9,6 @@ interface Props {
 export const LoginScreen: React.FC<Props> = ({ onTutorSelect, onStudentLogin }) => {
   const [role, setRole] = useState<'selection' | 'student'>('selection');
   const [studentName, setStudentName] = useState('');
-  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
-  const [apiKey, setApiKey] = useState('');
-  const [showSuccess, setShowSuccess] = useState(false);
-  const [hasApiKey, setHasApiKey] = useState(false);
-
-  // Load existing API key if available
-  useEffect(() => {
-    const existingKey = localStorage.getItem('mandarin_app_api_key');
-    setHasApiKey(!!existingKey);
-    if (existingKey) {
-      setApiKey(existingKey);
-    }
-  }, []);
-
-  const handleApiKeySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (apiKey.trim()) {
-      localStorage.setItem('mandarin_app_api_key', apiKey.trim());
-      setHasApiKey(true);
-      setShowSuccess(true);
-      setTimeout(() => {
-        setShowSuccess(false);
-        setShowApiKeyModal(false);
-      }, 1500);
-    }
-  };
-
-  const handleOpenModal = () => {
-    const existingKey = localStorage.getItem('mandarin_app_api_key');
-    setApiKey(existingKey || '');
-    setShowApiKeyModal(true);
-  };
 
   const handleStudentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,27 +24,6 @@ export const LoginScreen: React.FC<Props> = ({ onTutorSelect, onStudentLogin }) 
         <p className="text-slate-500 text-lg">IGCSE Preparation Platform</p>
       </div>
 
-      {/* API Key Button */}
-      <div className="mb-6">
-        <button
-          onClick={handleOpenModal}
-          className={`flex items-center gap-2 px-4 py-2 text-sm bg-white border rounded-lg transition-all shadow-sm ${
-            hasApiKey 
-              ? 'text-green-700 border-green-200 hover:border-green-300 hover:bg-green-50' 
-              : 'text-slate-600 hover:text-slate-800 border-slate-200 hover:border-slate-300'
-          }`}
-        >
-          <Key size={16} />
-          {hasApiKey ? (
-            <>
-              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-              Update API Key
-            </>
-          ) : (
-            'Enter API Key'
-          )}
-        </button>
-      </div>
 
       {role === 'selection' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-2xl">
@@ -141,68 +88,6 @@ export const LoginScreen: React.FC<Props> = ({ onTutorSelect, onStudentLogin }) 
         </div>
       )}
 
-      {/* API Key Modal */}
-      {showApiKeyModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in duration-200">
-            <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <div className="flex items-center gap-2">
-                <Key size={20} className="text-brand-600" />
-                <h3 className="font-bold text-slate-800">API Key Configuration</h3>
-              </div>
-              <button 
-                onClick={() => setShowApiKeyModal(false)} 
-                className="text-slate-400 hover:text-slate-600 transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleApiKeySubmit} className="p-6">
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Google Gemini API Key
-                </label>
-                <input
-                  type="text"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="Enter your Gemini API key (e.g., AIzaSy...)"
-                  className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all font-mono text-sm"
-                  autoFocus
-                />
-                <p className="text-xs text-slate-500 mt-2">
-                  This API key is used for all AI-powered features including vocabulary generation, lesson creation, and exercises.
-                </p>
-              </div>
-
-              {showSuccess && (
-                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700 animate-in fade-in slide-in-from-top-2">
-                  <Check size={16} />
-                  <span className="text-sm font-medium">API key saved successfully!</span>
-                </div>
-              )}
-
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowApiKeyModal(false)}
-                  className="flex-1 px-4 py-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 transition-colors font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={!apiKey.trim()}
-                  className="flex-1 px-4 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Save
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -7,7 +7,8 @@ interface Props {
   onBack: () => void;
 }
 
-const CATEGORIES = [
+// Predefined categories (optional suggestions)
+const SUGGESTED_CATEGORIES = [
   "Food & Drink",
   "Time & Dates",
   "Social Life",
@@ -85,6 +86,8 @@ export const VocabManagement: React.FC<Props> = ({ onBack }) => {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [customCategory, setCustomCategory] = useState<string>('');
+  const [useCustomCategory, setUseCustomCategory] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [extractedText, setExtractedText] = useState<string | null>(null);
@@ -101,10 +104,25 @@ export const VocabManagement: React.FC<Props> = ({ onBack }) => {
     setLoading(false);
   };
 
+  // Get all unique categories from uploaded lists
+  const getExistingCategories = (): string[] => {
+    const categories = new Set<string>();
+    vocabLists.forEach(list => {
+      if (list.category) {
+        categories.add(list.category);
+      }
+    });
+    return Array.from(categories).sort();
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !selectedCategory) {
-      setUploadError('Please select a category first');
+    
+    // Determine which category to use
+    const categoryToUse = useCustomCategory ? customCategory.trim() : selectedCategory;
+    
+    if (!file || !categoryToUse) {
+      setUploadError(useCustomCategory ? 'Please enter a category name' : 'Please select or enter a category');
       return;
     }
 
@@ -153,10 +171,10 @@ export const VocabManagement: React.FC<Props> = ({ onBack }) => {
       setShowPreview(false);
 
       // Check if list exists for this category
-      const existingList = vocabLists.find(list => list.category === selectedCategory);
+      const existingList = vocabLists.find(list => list.category === categoryToUse);
       const vocabList: VocabList = {
         id: existingList?.id || crypto.randomUUID(),
-        category: selectedCategory,
+        category: categoryToUse,
         characters: characters,
         uploadedAt: new Date().toISOString(),
         fileName: fileName
@@ -164,6 +182,11 @@ export const VocabManagement: React.FC<Props> = ({ onBack }) => {
 
       await saveVocabList(vocabList);
       await loadVocabLists();
+      
+      // Reset form
+      setSelectedCategory('');
+      setCustomCategory('');
+      setUseCustomCategory(false);
       
       setUploadSuccess(true);
       setTimeout(() => setUploadSuccess(false), 3000);
@@ -210,16 +233,90 @@ export const VocabManagement: React.FC<Props> = ({ onBack }) => {
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 Category
               </label>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
-              >
-                <option value="">Select a category</option>
-                {CATEGORIES.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
+              
+              {/* Toggle between predefined and custom category */}
+              <div className="flex gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUseCustomCategory(false);
+                    setCustomCategory('');
+                  }}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    !useCustomCategory
+                      ? 'bg-brand-600 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Use Predefined
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUseCustomCategory(true);
+                    setSelectedCategory('');
+                  }}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    useCustomCategory
+                      ? 'bg-brand-600 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Create Custom
+                </button>
+              </div>
+
+              {!useCustomCategory ? (
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
+                >
+                  <option value="">Select a category</option>
+                  {SUGGESTED_CATEGORIES.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                  {getExistingCategories().filter(cat => !SUGGESTED_CATEGORIES.includes(cat)).length > 0 && (
+                    <>
+                      <option disabled>──────────</option>
+                      {getExistingCategories()
+                        .filter(cat => !SUGGESTED_CATEGORIES.includes(cat))
+                        .map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                    </>
+                  )}
+                </select>
+              ) : (
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={customCategory}
+                    onChange={(e) => setCustomCategory(e.target.value)}
+                    placeholder="Enter custom category name (e.g., 'Lesson 1', 'Week 3', 'HSK Level 2')"
+                    className="w-full px-4 py-2 rounded-lg border border-slate-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
+                  />
+                  {getExistingCategories().length > 0 && (
+                    <div className="text-xs text-slate-500">
+                      <p className="font-semibold mb-1">Existing categories:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {getExistingCategories().map(cat => (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => {
+                              setCustomCategory(cat);
+                            }}
+                            className="px-2 py-1 bg-slate-100 hover:bg-slate-200 rounded text-slate-600 transition-colors"
+                          >
+                            {cat}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div>
@@ -231,13 +328,13 @@ export const VocabManagement: React.FC<Props> = ({ onBack }) => {
                   type="file"
                   accept=".csv,.json,.pdf,.txt"
                   onChange={handleFileUpload}
-                  disabled={!selectedCategory || uploading}
+                  disabled={(!selectedCategory && !customCategory.trim()) || uploading}
                   className="hidden"
                   id="vocab-file-input"
                 />
                 <label
                   htmlFor="vocab-file-input"
-                  className={`cursor-pointer flex flex-col items-center gap-2 ${!selectedCategory || uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`cursor-pointer flex flex-col items-center gap-2 ${(!selectedCategory && !customCategory.trim()) || uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {uploading ? (
                     <>

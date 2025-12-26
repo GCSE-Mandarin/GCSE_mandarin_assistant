@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { generateVocabularyList, generateWordDetails, generateSpeech } from '../services/geminiService';
 import { VocabWord, WordDetails, VocabProgress } from '../types';
-import { saveVocabProgress, getVocabProgress, getVocabListByCategory } from '../services/storage';
+import { saveVocabProgress, getVocabProgress, getVocabListByCategory, getVocabLists } from '../services/storage';
 import { ArrowLeft, Loader2, Volume2, PenTool, CheckCircle2, X, Mic, RefreshCw, Play, Check } from 'lucide-react';
 
 // Declare HanziWriter types from global script
@@ -66,6 +66,7 @@ async function decodeAudioData(
 export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) => {
   const [view, setView] = useState<'categories' | 'list' | 'flashcard'>('categories');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [availableCategories, setAvailableCategories] = useState<string[]>(CATEGORIES);
   
   const [characterList, setCharacterList] = useState<string[]>([]);
   const [listLoading, setListLoading] = useState(false);
@@ -82,8 +83,10 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
   const writerRef = useRef<any>(null); // HanziWriter instance for single character (Flashcard view)
   const writersRef = useRef<any[]>([]); // Array of HanziWriter instances for multi-character words
   const writingWriterRef = useRef<any>(null); // HanziWriter instance for Writing Modal
+  const writingExampleWriterRef = useRef<any>(null); // HanziWriter instance for Writing Modal example animation
   const hanziContainerRef = useRef<HTMLDivElement | null>(null); // Ref for flashcard container
   const hanziWriteContainerRef = useRef<HTMLDivElement | null>(null); // Ref for writing container
+  const hanziWriteExampleContainerRef = useRef<HTMLDivElement | null>(null); // Ref for writing example animation container
   
   // Modals
   const [showWritingModal, setShowWritingModal] = useState(false);
@@ -94,6 +97,28 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
   const [recordedAudio, setRecordedAudio] = useState<string | null>(null); // Blob URL
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  // Load available categories from uploaded vocab lists
+  useEffect(() => {
+    const loadCategories = async () => {
+      try {
+        const vocabLists = await getVocabLists();
+        const uploadedCategories = vocabLists.map(list => list.category).filter(Boolean);
+        
+        // Combine predefined categories with uploaded categories, removing duplicates
+        const allCategories = Array.from(new Set([...CATEGORIES, ...uploadedCategories]));
+        setAvailableCategories(allCategories);
+      } catch (error) {
+        console.error("Error loading categories:", error);
+        // Fall back to predefined categories on error
+        setAvailableCategories(CATEGORIES);
+      }
+    };
+    
+    if (view === 'categories') {
+      loadCategories();
+    }
+  }, [view]);
 
   // Load progress when entering list view
   const loadProgress = async () => {
@@ -169,7 +194,8 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
     const words = await generateVocabularyList(category);
         if (words.length === 0) {
           // Check if API key is missing
-          const apiKey = localStorage.getItem('mandarin_app_api_key') || (window as any).process?.env?.API_KEY;
+          // API key is now from environment variables (configured on Netlify)
+          const apiKey = import.meta.env.VITE_GEMINI_API_KEY || localStorage.getItem('mandarin_app_api_key') || '';
           if (!apiKey) {
             setListError("No vocabulary list found for this category. Please ask your tutor to upload a vocabulary list, or configure an API key in Settings.");
           } else {
@@ -590,6 +616,7 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
         if (!mounted) return;
 
         const container = hanziWriteContainerRef.current || document.getElementById('hanzi-write-div');
+        const exampleContainer = hanziWriteExampleContainerRef.current || document.getElementById('hanzi-write-example-div');
         const HW = (window as any).HanziWriter;
 
         // HanziWriter only supports single characters
@@ -602,7 +629,7 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
                  container.removeChild(container.firstChild);
                } catch (e) {
                  // If removeChild fails, use innerHTML as fallback
-             container.innerHTML = '';
+                 container.innerHTML = '';
                  break;
                }
              }
@@ -642,8 +669,80 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
         }
     };
 
+    const initExampleAnimation = () => {
+        if (!mounted) return;
+
+        const exampleContainer = hanziWriteExampleContainerRef.current || document.getElementById('hanzi-write-example-div');
+        const HW = (window as any).HanziWriter;
+
+        // Only show example for single characters
+        const isMultiCharacter = wordDetails?.character && wordDetails.character.length > 1;
+
+        if (exampleContainer && HW && wordDetails?.character && !isMultiCharacter) {
+            // Clean up previous example writer
+            if (writingExampleWriterRef.current) {
+                try {
+                    if (typeof writingExampleWriterRef.current.cancelAnimation === 'function') {
+                        writingExampleWriterRef.current.cancelAnimation();
+                    }
+                } catch (e) {
+                    // Ignore cleanup errors
+                }
+                writingExampleWriterRef.current = null;
+            }
+
+            // Remove React children first to avoid conflicts
+            while (exampleContainer.firstChild) {
+                try {
+                    exampleContainer.removeChild(exampleContainer.firstChild);
+                } catch (e) {
+                    exampleContainer.innerHTML = '';
+                    break;
+                }
+            }
+
+            try {
+                exampleContainer.innerHTML = '';
+                writingExampleWriterRef.current = HW.create('hanzi-write-example-div', wordDetails.character, {
+                    width: 200,
+                    height: 200,
+                    showCharacter: false, // Hide static character, only show stroke animation
+                    showOutline: true,
+                    strokeAnimationSpeed: 1,
+                    delayBetweenStrokes: 200,
+                    strokeColor: '#000000',
+                    radicalColor: '#e02424'
+                });
+                
+                // Auto-play the animation
+                writingExampleWriterRef.current.animateCharacter();
+                
+                // Force hide any static character elements
+                setTimeout(() => {
+                    const svg = exampleContainer.querySelector('svg');
+                    if (svg) {
+                        svg.querySelectorAll('text').forEach(el => el.remove());
+                        svg.querySelectorAll('path').forEach(path => {
+                            const fill = path.getAttribute('fill');
+                            if (fill && fill !== 'none' && fill !== 'transparent') {
+                                path.remove();
+                            }
+                        });
+                    }
+                }, 200);
+            } catch (e) {
+                console.error("HanziWriter Example Animation Error", e);
+                exampleContainer.innerHTML = `<span class="text-6xl font-black text-slate-800 chinese-text">${wordDetails.character}</span>`;
+            }
+        }
+    };
+
     if (showWritingModal && wordDetails) {
         initWritingQuiz();
+        // Initialize example animation with a small delay to ensure containers are ready
+        setTimeout(() => {
+            initExampleAnimation();
+        }, 100);
     }
 
     return () => { 
@@ -655,6 +754,12 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
             writingWriterRef.current.cancelAnimation();
           }
           writingWriterRef.current = null;
+        }
+        if (writingExampleWriterRef.current) {
+          if (typeof writingExampleWriterRef.current.cancelAnimation === 'function') {
+            writingExampleWriterRef.current.cancelAnimation();
+          }
+          writingExampleWriterRef.current = null;
         }
         // Don't clear container innerHTML here - let React handle it
       } catch (e) {
@@ -673,6 +778,14 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
         if (container) {
           container.innerHTML = `<div class="text-6xl text-slate-800 chinese-text flex items-center justify-center h-full">${wordDetails.character}</div>`;
         }
+    }
+    
+    // Also replay the example animation
+    if (writingExampleWriterRef.current && wordDetails && wordDetails.character.length === 1) {
+        if (typeof writingExampleWriterRef.current.cancelAnimation === 'function') {
+            writingExampleWriterRef.current.cancelAnimation();
+        }
+        writingExampleWriterRef.current.animateCharacter();
     }
   };
 
@@ -736,20 +849,58 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
   };
 
   // Views
-  const renderCategories = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {CATEGORIES.map((cat) => (
-        <button
-          key={cat}
-          onClick={() => handleCategorySelect(cat)}
-          className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-brand-300 hover:shadow-lg transition-all text-left group"
-        >
-          <h3 className="text-xl font-bold text-slate-800 group-hover:text-brand-600 transition-colors">{cat}</h3>
-          <p className="text-slate-400 text-sm mt-2">Explore vocabulary</p>
-        </button>
-      ))}
-    </div>
-  );
+  const renderCategories = () => {
+    // Separate predefined and custom categories
+    const predefinedCats = CATEGORIES.filter(cat => availableCategories.includes(cat));
+    const customCats = availableCategories.filter(cat => !CATEGORIES.includes(cat));
+    
+    return (
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {predefinedCats.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold text-slate-500 uppercase mb-3">Predefined Categories</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {predefinedCats.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => handleCategorySelect(cat)}
+                  className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 hover:border-brand-300 hover:shadow-lg transition-all text-left group"
+                >
+                  <h3 className="text-xl font-bold text-slate-800 group-hover:text-brand-600 transition-colors">{cat}</h3>
+                  <p className="text-slate-400 text-sm mt-2">Explore vocabulary</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {customCats.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold text-slate-500 uppercase mb-3">Custom Categories</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {customCats.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => handleCategorySelect(cat)}
+                  className="bg-white p-6 rounded-2xl shadow-sm border border-green-200 hover:border-green-400 hover:shadow-lg transition-all text-left group"
+                >
+                  <h3 className="text-xl font-bold text-slate-800 group-hover:text-green-600 transition-colors">{cat}</h3>
+                  <p className="text-slate-400 text-sm mt-2">Tutor uploaded list</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        
+        {availableCategories.length === 0 && (
+          <div className="text-center py-12 text-slate-500">
+            <p>No vocabulary categories available.</p>
+            <p className="text-sm mt-2">Ask your tutor to upload vocabulary lists.</p>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderCharacterList = () => (
     <div>
@@ -942,7 +1093,7 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
       {/* Writing Practice Modal */}
       {showWritingModal && wordDetails && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col">
                 <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                     <h3 className="font-bold text-slate-800">Write: {wordDetails.pinyin}</h3>
                     <button onClick={() => setShowWritingModal(false)} className="text-slate-400 hover:text-slate-600">
@@ -950,23 +1101,58 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
                     </button>
                 </div>
                 
-                <div className="p-8 flex flex-col items-center gap-4">
-                    <div className="relative min-w-[300px] min-h-[300px]">
-                        {/* Fallback overlay - completely separate from HanziWriter container */}
-                        {!writingWriterRef.current && (
-                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 border-2 border-slate-100 rounded-xl bg-slate-50">
-                        <span className="text-slate-200 text-6xl">{wordDetails.character}</span>
-                          </div>
+                <div className="p-8 flex flex-col items-center gap-6">
+                    <div className="flex flex-col md:flex-row items-center justify-center gap-6 w-full">
+                        {/* Example Animation */}
+                        {wordDetails.character.length === 1 && (
+                            <div className="flex flex-col items-center gap-2">
+                                <p className="text-xs font-semibold text-slate-500 uppercase">Watch Example</p>
+                                <div className="relative border-2 border-slate-200 rounded-xl bg-white p-4">
+                                    <div 
+                                        ref={hanziWriteExampleContainerRef}
+                                        key={`hanzi-write-example-${wordDetails.character}-${showWritingModal}`}
+                                        id="hanzi-write-example-div" 
+                                        className="min-w-[200px] min-h-[200px] flex items-center justify-center"
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            if (writingExampleWriterRef.current) {
+                                                if (typeof writingExampleWriterRef.current.cancelAnimation === 'function') {
+                                                    writingExampleWriterRef.current.cancelAnimation();
+                                                }
+                                                writingExampleWriterRef.current.animateCharacter();
+                                            }
+                                        }}
+                                        className="absolute bottom-2 right-2 p-2 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-600 transition-colors"
+                                        title="Replay animation"
+                                    >
+                                        <RefreshCw size={16} />
+                                    </button>
+                                </div>
+                            </div>
                         )}
-                        <div 
-                          ref={hanziWriteContainerRef}
-                          key={`hanzi-write-${wordDetails.character}-${showWritingModal}`}
-                          id="hanzi-write-div" 
-                          className="border-2 border-slate-100 rounded-xl bg-slate-50 min-w-[300px] min-h-[300px] relative z-10"
-                        />
+
+                        {/* Practice Field */}
+                        <div className="flex flex-col items-center gap-2">
+                            <p className="text-xs font-semibold text-slate-500 uppercase">Your Practice</p>
+                            <div className="relative min-w-[300px] min-h-[300px]">
+                                {/* Fallback overlay - completely separate from HanziWriter container */}
+                                {!writingWriterRef.current && (
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 border-2 border-slate-100 rounded-xl bg-slate-50">
+                                        <span className="text-slate-200 text-6xl">{wordDetails.character}</span>
+                                    </div>
+                                )}
+                                <div 
+                                    ref={hanziWriteContainerRef}
+                                    key={`hanzi-write-${wordDetails.character}-${showWritingModal}`}
+                                    id="hanzi-write-div" 
+                                    className="border-2 border-slate-100 rounded-xl bg-slate-50 min-w-[300px] min-h-[300px] relative z-10"
+                                />
+                            </div>
+                        </div>
                     </div>
                     <p className="text-sm text-slate-500 text-center">
-                        Trace the strokes in the correct order.
+                        Trace the strokes in the correct order. Watch the example on the left to see the stroke order.
                     </p>
                 </div>
 
