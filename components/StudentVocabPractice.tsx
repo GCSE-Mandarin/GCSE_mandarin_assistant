@@ -408,23 +408,14 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
     setAudioLoading(true);
     try {
         console.log("Generating speech for:", text);
-        const base64Audio = await generateSpeech(text);
-        if (!base64Audio) {
-          console.error("No audio returned from generateSpeech");
-          setAudioLoading(false);
-          return;
-        }
-
-        console.log("Audio generated, length:", base64Audio.length);
-
-        // Ensure audio context is ready - create new one if needed or resume existing
+        
+        // Ensure audio context is ready FIRST, before generating speech
+        // This ensures the context is initialized on user interaction (required by browser autoplay policy)
         if (!audioContextRef.current) {
             console.log("Creating new AudioContext");
             audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
         }
         const ctx = audioContextRef.current;
-        
-        console.log("AudioContext state:", ctx.state);
         
         // Resume if suspended (required for user interaction after page load)
         if (ctx.state === 'suspended') {
@@ -436,12 +427,35 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
         if (ctx.state !== 'running') {
           console.log("AudioContext not running, attempting resume");
           await ctx.resume();
+          // Give it a moment to fully resume
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        console.log("AudioContext state:", ctx.state);
+        
+        // Now generate the speech
+        const base64Audio = await generateSpeech(text);
+        if (!base64Audio) {
+          console.error("No audio returned from generateSpeech");
+          alert("Failed to generate audio. Please check your API key and try again.");
+          setAudioLoading(false);
+          return;
+        }
+
+        console.log("Audio generated, length:", base64Audio.length);
+
+        // Ensure context is still running after async operation
+        if (ctx.state !== 'running') {
+          console.log("AudioContext suspended during generation, resuming");
+          await ctx.resume();
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
 
         console.log("Decoding audio data");
         const decodedData = decode(base64Audio);
         if (decodedData.length === 0) {
           console.error("Decoded audio data is empty");
+          alert("Failed to decode audio data. Please try again.");
           setAudioLoading(false);
           return;
         }
@@ -449,26 +463,59 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
         const audioBuffer = await decodeAudioData(decodedData, ctx, 24000, 1);
         console.log("Audio buffer created, duration:", audioBuffer.duration);
         
+        // Ensure context is still running before creating source
+        if (ctx.state !== 'running') {
+          console.log("AudioContext suspended before playback, resuming");
+          await ctx.resume();
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
         const source = ctx.createBufferSource();
         source.buffer = audioBuffer;
         source.connect(ctx.destination);
         
-        // Add error handler
+        // Add event handlers
+        let playbackStarted = false;
+        
+        // Set a timeout fallback in case onended doesn't fire
+        const timeoutId = setTimeout(() => {
+          if (!playbackStarted) {
+            console.log("Audio playback timeout, resetting loading state");
+            setAudioLoading(false);
+          }
+        }, (audioBuffer.duration * 1000) + 2000);
+        
         source.onended = () => {
+          clearTimeout(timeoutId);
           console.log("Audio playback ended");
+          playbackStarted = true;
+          setAudioLoading(false);
         };
         
         source.onerror = (e) => {
+          clearTimeout(timeoutId);
           console.error("Audio source error:", e);
+          playbackStarted = true;
+          setAudioLoading(false);
+          alert("Error playing audio. Please try again.");
         };
         
-        console.log("Starting audio playback");
-        source.start(0);
+        console.log("Starting audio playback, context state:", ctx.state);
+        try {
+          source.start(0);
+          playbackStarted = true;
+        } catch (startError) {
+          clearTimeout(timeoutId);
+          console.error("Error starting audio playback:", startError);
+          setAudioLoading(false);
+          alert("Failed to start audio playback. Please try again.");
+          return;
+        }
+        
     } catch (e) {
         console.error("Playback failed", e);
-        alert(`Failed to play audio: ${e instanceof Error ? e.message : String(e)}`);
-    } finally {
         setAudioLoading(false);
+        alert(`Failed to play audio: ${e instanceof Error ? e.message : String(e)}`);
     }
   };
 
@@ -971,13 +1018,37 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
                         <button 
                             onClick={async (e) => {
                               e.preventDefault();
+                              e.stopPropagation();
+                              
+                              // Don't proceed if already loading
+                              if (audioLoading) {
+                                console.log("Audio already loading, ignoring click");
+                                return;
+                              }
+                              
                               // Ensure audio context is ready on user interaction (required by browser autoplay policy)
                               if (!audioContextRef.current) {
+                                console.log("Creating AudioContext on button click");
                                 audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
                               }
-                              if (audioContextRef.current.state === 'suspended') {
-                                await audioContextRef.current.resume();
+                              
+                              const ctx = audioContextRef.current;
+                              
+                              // Resume if suspended
+                              if (ctx.state === 'suspended') {
+                                console.log("Resuming AudioContext on button click");
+                                try {
+                                  await ctx.resume();
+                                  // Small delay to ensure context is ready
+                                  await new Promise(resolve => setTimeout(resolve, 50));
+                                } catch (err) {
+                                  console.error("Error resuming AudioContext:", err);
+                                }
                               }
+                              
+                              console.log("AudioContext state before playAudio:", ctx.state);
+                              
+                              // Now call playAudio
                               await playAudio(wordDetails.character);
                             }}
                             disabled={audioLoading}
