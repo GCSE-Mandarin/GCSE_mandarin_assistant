@@ -117,32 +117,32 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
     if (!selectedCategory) return;
     
     try {
-      const id = `${studentName}_${word}`;
-      const existing = progressMap[word] || {
-          id,
-          studentName,
-          category: selectedCategory,
-          word,
-          pinyin,
-          meaning,
-          practices: { viewed: 0, writing: 0, pronunciation: 0 },
-          lastPracticed: new Date().toISOString()
-      };
+    const id = `${studentName}_${word}`;
+    const existing = progressMap[word] || {
+        id,
+        studentName,
+        category: selectedCategory,
+        word,
+        pinyin,
+        meaning,
+        practices: { viewed: 0, writing: 0, pronunciation: 0 },
+        lastPracticed: new Date().toISOString()
+    };
 
-      const updated: VocabProgress = {
-          ...existing,
-          practices: {
-              ...existing.practices,
-              [type]: existing.practices[type] + 1
-          },
-          lastPracticed: new Date().toISOString()
-      };
+    const updated: VocabProgress = {
+        ...existing,
+        practices: {
+            ...existing.practices,
+            [type]: existing.practices[type] + 1
+        },
+        lastPracticed: new Date().toISOString()
+    };
 
-      // Optimistic update
-      setProgressMap(prev => ({ ...prev, [word]: updated }));
-      
+    // Optimistic update
+    setProgressMap(prev => ({ ...prev, [word]: updated }));
+    
       // Save (errors are handled in saveVocabProgress, so this won't throw)
-      await saveVocabProgress(updated);
+    await saveVocabProgress(updated);
     } catch (error) {
       // This should never happen since saveVocabProgress handles errors, but just in case
       console.error("Error updating progress:", error);
@@ -166,7 +166,7 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
         setCharacterList(uploadedList.characters);
       } else {
         // Fall back to AI generation if no uploaded list exists
-        const words = await generateVocabularyList(category);
+    const words = await generateVocabularyList(category);
         if (words.length === 0) {
           // Check if API key is missing
           const apiKey = localStorage.getItem('mandarin_app_api_key') || (window as any).process?.env?.API_KEY;
@@ -197,7 +197,7 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
         setListError("Failed to load vocabulary. Please try again.");
       }
     } finally {
-      setListLoading(false);
+    setListLoading(false);
     }
   };
 
@@ -212,7 +212,7 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
       const details = await generateWordDetails(character);
       if (details) {
         setWordDetails(details);
-        // Record view
+    // Record view
         updateProgress(character, details.pinyin, details.meaning, 'viewed');
       } else {
         console.error('Failed to generate word details for character:', character);
@@ -408,7 +408,7 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
     setAudioLoading(true);
     try {
         console.log("Generating speech for:", text);
-        
+
         // Ensure audio context is ready FIRST, before generating speech
         // This ensures the context is initialized on user interaction (required by browser autoplay policy)
         if (!audioContextRef.current) {
@@ -434,16 +434,30 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
         console.log("AudioContext state:", ctx.state);
         
         // Now generate the speech
-        const base64Audio = await generateSpeech(text);
-        if (!base64Audio) {
-          console.error("No audio returned from generateSpeech");
-          alert("Failed to generate audio. Please check your API key and try again.");
+        let base64Audio: string | null = null;
+        let openaiAudio: { audioData: ArrayBuffer, format: 'openai' } | null = null;
+        
+        try {
+          console.log("[PlayAudio] Calling generateSpeech for:", text);
+          const result = await generateSpeech(text);
+          
+          // Check if result is OpenAI format or Gemini format
+          if (result && typeof result === 'object' && 'format' in result && result.format === 'openai') {
+            openaiAudio = result as { audioData: ArrayBuffer, format: 'openai' };
+            console.log("[PlayAudio] OpenAI TTS returned audio");
+          } else {
+            base64Audio = result as string | null;
+            console.log("[PlayAudio] Gemini TTS returned:", base64Audio ? `audio data (${base64Audio.length} chars)` : "null");
+          }
+        } catch (error: any) {
+          console.error("[PlayAudio] Error calling generateSpeech:", error);
+          console.error("[PlayAudio] Error stack:", error?.stack);
           setAudioLoading(false);
+          const errorMsg = error?.message || 'Unknown error';
+          alert(`Failed to generate audio: ${errorMsg}\n\nPlease check:\n1. Your API key is correct\n2. The API has TTS access\n3. Check the browser console for more details`);
           return;
         }
-
-        console.log("Audio generated, length:", base64Audio.length);
-
+        
         // Ensure context is still running after async operation
         if (ctx.state !== 'running') {
           console.log("AudioContext suspended during generation, resuming");
@@ -451,16 +465,37 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
           await new Promise(resolve => setTimeout(resolve, 100));
         }
 
-        console.log("Decoding audio data");
-        const decodedData = decode(base64Audio);
-        if (decodedData.length === 0) {
-          console.error("Decoded audio data is empty");
-          alert("Failed to decode audio data. Please try again.");
+        let audioBuffer: AudioBuffer;
+        
+        if (openaiAudio) {
+          // OpenAI returns MP3 format - decode directly using Web Audio API
+          console.log("Decoding OpenAI audio (MP3 format)");
+          try {
+            audioBuffer = await ctx.decodeAudioData(openaiAudio.audioData);
+            console.log("OpenAI audio decoded, duration:", audioBuffer.duration);
+          } catch (decodeError) {
+            console.error("Failed to decode OpenAI audio:", decodeError);
+            alert("Failed to decode audio. Please try again.");
+            setAudioLoading(false);
+            return;
+          }
+        } else if (base64Audio) {
+          // Gemini returns PCM format - use custom decoder
+          console.log("Decoding Gemini audio (PCM format), length:", base64Audio.length);
+          const decodedData = decode(base64Audio);
+          if (decodedData.length === 0) {
+            console.error("Decoded audio data is empty");
+            alert("Failed to decode audio data. Please try again.");
+            setAudioLoading(false);
+            return;
+          }
+          audioBuffer = await decodeAudioData(decodedData, ctx, 24000, 1);
+        } else {
+          console.error("[PlayAudio] No audio returned from generateSpeech");
+          alert("Failed to generate audio. The API returned no audio data. Please check your API key and try again.");
           setAudioLoading(false);
           return;
         }
-
-        const audioBuffer = await decodeAudioData(decodedData, ctx, 24000, 1);
         console.log("Audio buffer created, duration:", audioBuffer.duration);
         
         // Ensure context is still running before creating source
@@ -567,7 +602,7 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
                  container.removeChild(container.firstChild);
                } catch (e) {
                  // If removeChild fails, use innerHTML as fallback
-                 container.innerHTML = '';
+             container.innerHTML = '';
                  break;
                }
              }
@@ -646,6 +681,7 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
     if (showPronunciationModal && wordDetails && !audioLoading) {
       // Small delay to ensure modal is visible
       const timer = setTimeout(() => {
+        // Use character - will be enhanced in generateSpeech service for single chars
         playAudio(wordDetails.character);
       }, 300);
       return () => clearTimeout(timer);
@@ -919,7 +955,7 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
                         {/* Fallback overlay - completely separate from HanziWriter container */}
                         {!writingWriterRef.current && (
                           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 border-2 border-slate-100 rounded-xl bg-slate-50">
-                            <span className="text-slate-200 text-6xl">{wordDetails.character}</span>
+                        <span className="text-slate-200 text-6xl">{wordDetails.character}</span>
                           </div>
                         )}
                         <div 
@@ -1048,7 +1084,7 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
                               
                               console.log("AudioContext state before playAudio:", ctx.state);
                               
-                              // Now call playAudio
+                              // Use character - will be enhanced in generateSpeech service for single chars
                               await playAudio(wordDetails.character);
                             }}
                             disabled={audioLoading}

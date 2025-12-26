@@ -7,12 +7,14 @@ interface Props {
 
 export const SettingsView: React.FC<Props> = ({ onBack }) => {
   const [apiKey, setApiKey] = useState('');
+  const [openaiKey, setOpenaiKey] = useState('');
   const [supabaseUrl, setSupabaseUrl] = useState('');
   const [supabaseKey, setSupabaseKey] = useState('');
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     setApiKey(localStorage.getItem('mandarin_app_api_key') || '');
+    setOpenaiKey(localStorage.getItem('mandarin_app_openai_key') || '');
     // Pre-fill with defaults if local storage is empty, so user sees the active configuration
     setSupabaseUrl(localStorage.getItem('supabase_url') || 'https://ujyjsmlasctasluxpuyn.supabase.co');
     setSupabaseKey(localStorage.getItem('supabase_key') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqeWpzbWxhc2N0YXNsdXhwdXluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0ODM3MDAsImV4cCI6MjA2MTA1OTcwMH0.0GXUKWhJ8Ck9zSkslKvrKOhFnsi-5jO0TT4qLAH5yf4');
@@ -21,6 +23,7 @@ export const SettingsView: React.FC<Props> = ({ onBack }) => {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     localStorage.setItem('mandarin_app_api_key', apiKey.trim());
+    localStorage.setItem('mandarin_app_openai_key', openaiKey.trim());
     localStorage.setItem('supabase_url', supabaseUrl.trim());
     localStorage.setItem('supabase_key', supabaseKey.trim());
     
@@ -62,15 +65,29 @@ export const SettingsView: React.FC<Props> = ({ onBack }) => {
               </div>
             </div>
 
-            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
-              <label className="block text-sm font-bold text-slate-700 mb-2">Google Gemini API Key</label>
-              <input 
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Enter Gemini API Key"
-                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
-              />
+            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Google Gemini API Key</label>
+                <input 
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="Enter Gemini API Key"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
+                />
+                <p className="text-xs text-slate-500 mt-1">Required for generating lessons and vocabulary.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">OpenAI API Key (Optional)</label>
+                <input 
+                  type="password"
+                  value={openaiKey}
+                  onChange={(e) => setOpenaiKey(e.target.value)}
+                  placeholder="Enter OpenAI API Key (for single character pronunciation)"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none"
+                />
+                <p className="text-xs text-slate-500 mt-1">Optional. Used as fallback for single character pronunciation when Gemini TTS fails.</p>
+              </div>
             </div>
           </section>
 
