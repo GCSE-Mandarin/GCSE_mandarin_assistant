@@ -181,7 +181,7 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
   }
 
   return (
-    <div className="h-full flex flex-col bg-slate-50 overflow-hidden">
+    <div className="min-h-screen flex flex-col bg-slate-50">
       {/* Header */}
       <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
         <div className="flex items-center gap-4">
@@ -218,7 +218,7 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-hidden relative">
+      <main className="flex-1 overflow-y-auto custom-scrollbar relative">
         
         {/* VIEW 1: MATERIAL */}
         {view === 'material' && (

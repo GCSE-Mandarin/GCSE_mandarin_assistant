@@ -5,14 +5,27 @@
 -------------------------------------------------- */
 
 /* 1. Basic reset for body/html */
-html,
-body {
+/* iOS Safari: Use min-height instead of height to allow natural scrolling */
+html {
   margin: 0;
   padding: 0;
   height: 100%;
+  /* Prevent iOS from locking viewport */
+  position: relative;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  /* Allow body to grow naturally */
+  height: auto;
 }
 
 /* Allow the page to scroll normally (desktop + mobile) */
+/* iOS Safari: Don't lock the viewport, let it scroll naturally */
 body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -20,11 +33,18 @@ body {
     sans-serif;
   background-color: #f8fafc; /* matches Tailwind slate-50 */
   color: #0f172a; /* slate-900-ish */
+  /* Prevent iOS from "swallowing" touch events */
+  position: relative;
+  height: auto;
+  min-height: 100vh;
 }
 
 /* Root container should at least fill viewport height */
+/* iOS Safari: Don't lock height, let it flow naturally */
 #root {
-  min-height: 100%;
+  min-height: 100vh;
+  height: auto;
+  position: relative;
 }
 
 /* 2. Improve tap behavior on mobile (no blue highlight) */
@@ -73,3 +93,187 @@ body {
     min-height: -webkit-fill-available;
   }
 }
+
+/* Learning Material - Large, readable font sizes (responsive) */
+.learning-material-content {
+  font-size: 1.25rem; /* 20px on mobile */
+  line-height: 1.8;
+  color: #1e293b; /* slate-800 */
+}
+
+@media (min-width: 640px) {
+  .learning-material-content {
+    font-size: 1.5rem; /* 24px on tablet/desktop */
+  }
+}
+
+.learning-material-content p {
+  font-size: inherit;
+  line-height: 1.8;
+  margin-bottom: 1.5rem;
+}
+
+.learning-material-content h1 {
+  font-size: 2rem; /* Mobile */
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 1.5rem;
+  color: #0f172a; /* slate-900 */
+}
+
+@media (min-width: 640px) {
+  .learning-material-content h1 {
+    font-size: 2.5rem; /* Desktop */
+  }
+}
+
+.learning-material-content h2 {
+  font-size: 1.75rem; /* Mobile */
+  font-weight: 700;
+  margin-top: 2rem;
+  margin-bottom: 1.25rem;
+  color: #1e293b; /* slate-800 */
+}
+
+@media (min-width: 640px) {
+  .learning-material-content h2 {
+    font-size: 2rem; /* Desktop */
+  }
+}
+
+.learning-material-content h3 {
+  font-size: 1.5rem; /* Mobile */
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  color: #334155; /* slate-700 */
+}
+
+@media (min-width: 640px) {
+  .learning-material-content h3 {
+    font-size: 1.75rem; /* Desktop */
+  }
+}
+
+.learning-material-content ul,
+.learning-material-content ol {
+  font-size: inherit;
+  line-height: 1.8;
+  margin-bottom: 1.5rem;
+  padding-left: 1.5rem; /* Mobile */
+}
+
+@media (min-width: 640px) {
+  .learning-material-content ul,
+  .learning-material-content ol {
+    padding-left: 2rem; /* Desktop */
+  }
+}
+
+.learning-material-content li {
+  font-size: inherit;
+  line-height: 1.8;
+  margin-bottom: 1rem;
+}
+
+.learning-material-content strong {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.learning-material-content em {
+  font-style: italic;
+}
+
+.learning-material-content code {
+  font-size: 0.9em;
+  background-color: #f1f5f9;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+}
+
+/* Chinese text styling */
+.learning-material-content .chinese-text,
+.learning-material-content :has([\u4e00-\u9fa5]) {
+  font-size: 1.5rem; /* Mobile */
+  line-height: 2;
+}
+
+@media (min-width: 640px) {
+  .learning-material-content .chinese-text,
+  .learning-material-content :has([\u4e00-\u9fa5]) {
+    font-size: 1.75rem; /* Desktop */
+  }
+}
+
+/* Mobile-specific improvements */
+@media (max-width: 640px) {
+  /* Larger touch targets on mobile */
+  button:not(.touch-manipulation),
+  a:not(.touch-manipulation) {
+    min-height: 44px; /* iOS recommended touch target */
+    min-width: 44px;
+  }
+  
+  /* Better spacing on mobile */
+  .p-6 {
+    padding: 1rem; /* Reduce padding on mobile */
+  }
+  
+  .p-8 {
+    padding: 1.25rem;
+  }
+  
+  .p-10 {
+    padding: 1.5rem;
+  }
+  
+  /* Larger text inputs on mobile */
+  input[type="text"],
+  input[type="password"],
+  input[type="email"],
+  textarea,
+  select {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    padding: 0.75rem;
+  }
+  
+  /* Better modal spacing */
+  .fixed.inset-0 {
+    padding: 1rem;
+  }
+  
+  /* Better header spacing */
+  header {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* Touch manipulation for better mobile interaction */
+.touch-manipulation {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent text selection on buttons (mobile) */
+button {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Better form inputs on all devices */
+input, textarea, select {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Improve scrolling on mobile */
+@media (max-width: 640px) {
+  .overflow-y-auto,
+  .custom-scrollbar {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+}
+

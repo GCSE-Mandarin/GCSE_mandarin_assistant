@@ -28,27 +28,27 @@ export const StudentDashboard: React.FC<Props> = ({ studentName, onSelectLesson,
 
   return (
     <div className="w-full">
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <div className="bg-blue-100 p-2 rounded-lg">
-            <BookOpen className="text-blue-600" size={20} />
+      <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between sticky top-0 z-10">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+          <div className="bg-blue-100 p-1.5 sm:p-2 rounded-lg flex-shrink-0">
+            <BookOpen className="text-blue-600" size={18} />
           </div>
-          <div>
-            <h1 className="text-lg font-bold text-slate-800">Welcome, {studentName}</h1>
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-lg font-bold text-slate-800 truncate">Welcome, {studentName}</h1>
             <p className="text-xs text-slate-500">Your Assignments</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             <button 
                 onClick={loadLessons}
-                className="text-slate-400 hover:text-blue-600 transition-colors p-2"
+                className="text-slate-400 hover:text-blue-600 transition-colors p-2 touch-manipulation"
                 title="Refresh"
             >
                 <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
             </button>
             <button 
                 onClick={onLogout}
-                className="text-slate-400 hover:text-slate-600 transition-colors p-2"
+                className="text-slate-400 hover:text-slate-600 transition-colors p-2 touch-manipulation"
                 title="Logout"
             >
                 <LogOut size={20} />
@@ -56,7 +56,7 @@ export const StudentDashboard: React.FC<Props> = ({ studentName, onSelectLesson,
         </div>
       </header>
 
-      <main className="p-6 max-w-5xl mx-auto w-full pb-12">
+      <main className="p-4 sm:p-6 max-w-5xl mx-auto w-full pb-12">
         
         {/* Practice Vocabulary Section */}
         <div className="mb-8">
@@ -65,14 +65,14 @@ export const StudentDashboard: React.FC<Props> = ({ studentName, onSelectLesson,
             </div>
             <button 
                 onClick={onPracticeVocab}
-                className="w-full sm:w-auto flex items-center gap-4 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white p-6 rounded-2xl shadow-lg shadow-brand-200 transition-all transform hover:-translate-y-1 group"
+                className="w-full sm:w-auto flex items-center gap-3 sm:gap-4 bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-white p-4 sm:p-6 rounded-2xl shadow-lg shadow-brand-200 transition-all transform hover:-translate-y-1 active:scale-[0.98] group touch-manipulation"
             >
-                <div className="bg-white/20 p-3 rounded-xl">
-                    <Languages size={32} className="text-white" />
+                <div className="bg-white/20 p-2 sm:p-3 rounded-xl flex-shrink-0">
+                    <Languages size={24} className="sm:w-8 sm:h-8 text-white" />
                 </div>
-                <div className="text-left">
-                    <h3 className="font-bold text-lg">Practice Vocabulary</h3>
-                    <p className="text-brand-100 text-sm">Explore topics like Food, Time, and more.</p>
+                <div className="text-left min-w-0">
+                    <h3 className="font-bold text-base sm:text-lg">Practice Vocabulary</h3>
+                    <p className="text-brand-100 text-xs sm:text-sm">Explore topics like Food, Time, and more.</p>
                 </div>
             </button>
         </div>

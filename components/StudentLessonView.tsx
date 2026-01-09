@@ -168,18 +168,85 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
   const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model', text: string }[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
 
-  // Parse material into sections
+  // Parse material into sections - split into smaller chunks (one point or example per page)
   const sections = useMemo(() => {
     if (!lesson.material) return [];
+    
+    // First split by major sections (---)
+    let majorSections: string[] = [];
     if (lesson.material.includes('---')) {
-      return lesson.material
+      majorSections = lesson.material
         .split('---')
         .map(s => s.trim())
         .filter(s => s.length > 0);
+    } else {
+      const raw = `\n${lesson.material}`;
+      const parts = raw.split(/\n(?=#{1,3}\s)/g).filter(p => p.trim().length > 0);
+      majorSections = parts.length > 0 ? parts : [lesson.material];
     }
-    const raw = `\n${lesson.material}`;
-    const parts = raw.split(/\n(?=#{1,3}\s)/g).filter(p => p.trim().length > 0);
-    return parts.length > 0 ? parts : [lesson.material];
+    
+    // Now split each major section into smaller chunks
+    const chunks: string[] = [];
+    
+    majorSections.forEach(section => {
+      const lines = section.split('\n');
+      let currentChunk = '';
+      let inList = false;
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const trimmed = line.trim();
+        
+        // Check if this is a bullet point or list item
+        const isBullet = /^[-*•]\s/.test(trimmed) || /^\d+\.\s/.test(trimmed);
+        // Check if this looks like an example (contains Chinese characters with pinyin pattern)
+        const isExample = /[\u4e00-\u9fa5].*\([a-zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]+.*\)/.test(trimmed) || 
+                         /^[*•-]\s.*[\u4e00-\u9fa5]/.test(trimmed) ||
+                         /^Example|^例子|^For example/i.test(trimmed);
+        
+        // If we hit a new bullet/example and have content, save current chunk
+        if ((isBullet || isExample) && currentChunk.trim()) {
+          chunks.push(currentChunk.trim());
+          currentChunk = line + '\n';
+          inList = true;
+        } 
+        // If we hit a header and have content, save current chunk
+        else if (/^#{1,3}\s/.test(trimmed) && currentChunk.trim()) {
+          chunks.push(currentChunk.trim());
+          currentChunk = line + '\n';
+          inList = false;
+        }
+        // If we hit a blank line after a list item, save that chunk
+        else if (trimmed === '' && inList && currentChunk.trim()) {
+          chunks.push(currentChunk.trim());
+          currentChunk = '';
+          inList = false;
+        }
+        // Otherwise, add to current chunk
+        else {
+          currentChunk += line + '\n';
+          if (isBullet || isExample) {
+            inList = true;
+          }
+        }
+      }
+      
+      // Don't forget the last chunk
+      if (currentChunk.trim()) {
+        chunks.push(currentChunk.trim());
+      }
+    });
+    
+    // If no chunks were created (no bullets/examples found), split by paragraphs
+    if (chunks.length === 0) {
+      majorSections.forEach(section => {
+        const paragraphs = section.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+        chunks.push(...paragraphs);
+      });
+    }
+    
+    // If still no chunks, just use the original sections
+    return chunks.length > 0 ? chunks : majorSections;
   }, [lesson.material]);
 
   // Reset visuals when section changes
@@ -427,7 +494,7 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
     const isLastSection = currentSection === sections.length - 1;
 
     return (
-      <div className="h-full bg-slate-50 flex flex-col relative overflow-hidden">
+      <div className="min-h-screen bg-slate-50 flex flex-col relative">
          <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10 shrink-0">
           <button 
             onClick={handleBackNavigation}
@@ -443,8 +510,8 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto custom-scrollbar p-6 flex flex-col items-center">
-            <div className="max-w-3xl w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-8 min-h-[400px] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500 mb-24">
+        <main className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 flex flex-col items-center">
+            <div className="max-w-4xl w-full bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 md:p-10 min-h-[400px] flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500 mb-20 sm:mb-24">
                 {/* Visuals Area */}
                 <div className="mb-6 flex gap-2 justify-end">
                      <button 
@@ -479,32 +546,32 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
                     </div>
                 )}
 
-                <div className="prose prose-slate prose-lg max-w-none flex-1">
+                <div className="prose prose-slate max-w-none flex-1 learning-material-content">
                     <ReactMarkdown>{sections[currentSection]}</ReactMarkdown>
                 </div>
             </div>
         </main>
 
-        <footer className="bg-white border-t border-slate-200 p-6 flex justify-between items-center max-w-5xl mx-auto w-full sticky bottom-0 z-10">
+        <footer className="bg-white border-t border-slate-200 p-4 sm:p-6 flex justify-between items-center gap-3 max-w-5xl mx-auto w-full sticky bottom-0 z-10">
             <button 
                 onClick={handlePrevSection}
                 disabled={currentSection === 0}
-                className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-all"
+                className="flex items-center gap-2 px-4 sm:px-6 py-3 rounded-xl font-semibold text-sm sm:text-base text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent transition-all touch-manipulation active:scale-[0.98]"
             >
-                <ChevronLeft size={20} /> Previous
+                <ChevronLeft size={20} /> <span className="hidden sm:inline">Previous</span>
             </button>
 
             {isLastSection ? (
                 <button 
                     onClick={handleNextSection}
-                    className="flex items-center gap-2 px-8 py-3 rounded-xl font-semibold bg-brand-600 hover:bg-brand-700 text-white transition-all"
+                    className="flex items-center gap-2 px-6 sm:px-8 py-3 rounded-xl font-semibold text-sm sm:text-base bg-brand-600 hover:bg-brand-700 text-white transition-all touch-manipulation active:scale-[0.98]"
                 >
-                    Complete Lesson <ChevronRight size={20} />
+                    <span className="whitespace-nowrap">Complete Lesson</span> <ChevronRight size={20} />
                 </button>
             ) : (
                 <button 
                     onClick={handleNextSection}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-slate-600 hover:bg-slate-100 transition-all"
+                    className="flex items-center gap-2 px-4 sm:px-6 py-3 rounded-xl font-semibold text-sm sm:text-base text-slate-600 hover:bg-slate-100 transition-all touch-manipulation active:scale-[0.98]"
                 >
                     Next <ChevronRight size={20} />
                 </button>
@@ -633,7 +700,7 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
     const progress = ((practiceIndex + 1) / lesson.exercises.length) * 100;
 
     return (
-      <div className="h-screen bg-slate-50 flex flex-col overflow-hidden">
+      <div className="min-h-screen bg-slate-50 flex flex-col">
         <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10 shrink-0">
           <button 
             onClick={handleBackNavigation}

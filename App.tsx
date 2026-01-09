@@ -97,91 +97,89 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="w-full bg-slate-50 text-slate-900 h-screen overflow-hidden flex flex-col">
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
-        {view === 'login' && (
-          <LoginScreen 
-            onTutorSelect={handleTutorSelect} 
-            onStudentLogin={handleStudentLogin} 
-          />
-        )}
+    <div className="w-full bg-slate-50 text-slate-900 min-h-screen">
+      {view === 'login' && (
+        <LoginScreen 
+          onTutorSelect={handleTutorSelect} 
+          onStudentLogin={handleStudentLogin} 
+        />
+      )}
 
-        {view === 'tutor-dashboard' && (
-          <TutorDashboard 
-            onPlanLesson={handlePlanLesson}
-            onViewProgress={handleViewProgress}
-            onBack={handleLogout}
-            onSettings={handleSettings}
-            onManageVocab={handleManageVocab}
-          />
-        )}
+      {view === 'tutor-dashboard' && (
+        <TutorDashboard 
+          onPlanLesson={handlePlanLesson}
+          onViewProgress={handleViewProgress}
+          onBack={handleLogout}
+          onSettings={handleSettings}
+          onManageVocab={handleManageVocab}
+        />
+      )}
 
-        {view === 'settings' && (
-          <SettingsView onBack={handleBackToDashboard} />
-        )}
+      {view === 'settings' && (
+        <SettingsView onBack={handleBackToDashboard} />
+      )}
 
-        {view === 'tutor-progress' && (
-          <StudentProgressView 
-            onBack={handleBackToDashboard}
-          />
-        )}
+      {view === 'tutor-progress' && (
+        <StudentProgressView 
+          onBack={handleBackToDashboard}
+        />
+      )}
 
-        {view === 'onboarding' && (
-          <div className="h-full relative">
-            <button onClick={handleBackToDashboard} className="absolute top-4 left-4 text-slate-400 hover:text-slate-600">Back</button>
-            <StudentOnboarding onComplete={handleOnboardingComplete} />
-          </div>
-        )}
-        
-        {view === 'curriculum' && profile && (
-          <StageCurriculum 
-            stageId={profile.stageId} 
-            studentName={profile.name}
-            onSelectPoint={handlePointSelection}
-            onBack={handleBackToOnboarding}
-          />
-        )}
+      {view === 'onboarding' && (
+        <div className="min-h-screen relative">
+          <button onClick={handleBackToDashboard} className="absolute top-4 left-4 z-10 text-slate-400 hover:text-slate-600 touch-manipulation">Back</button>
+          <StudentOnboarding onComplete={handleOnboardingComplete} />
+        </div>
+      )}
+      
+      {view === 'curriculum' && profile && (
+        <StageCurriculum 
+          stageId={profile.stageId} 
+          studentName={profile.name}
+          onSelectPoint={handlePointSelection}
+          onBack={handleBackToOnboarding}
+        />
+      )}
 
-        {view === 'editor' && selectedStage && selectedTopic && selectedPoint && profile && (
-          <LessonEditor 
-            key={selectedPoint.id}
-            stage={selectedStage}
-            topic={selectedTopic}
-            point={selectedPoint}
-            studentName={profile.name}
-            onBack={handleBackToCurriculum}
-          />
-        )}
+      {view === 'editor' && selectedStage && selectedTopic && selectedPoint && profile && (
+        <LessonEditor 
+          key={selectedPoint.id}
+          stage={selectedStage}
+          topic={selectedTopic}
+          point={selectedPoint}
+          studentName={profile.name}
+          onBack={handleBackToCurriculum}
+        />
+      )}
 
-        {view === 'student-dashboard' && (
-          <StudentDashboard 
-            studentName={studentName} 
-            onSelectLesson={handleStudentLessonSelect}
-            onLogout={handleLogout}
-            onPracticeVocab={handleStudentPracticeVocab}
-          />
-        )}
+      {view === 'student-dashboard' && (
+        <StudentDashboard 
+          studentName={studentName} 
+          onSelectLesson={handleStudentLessonSelect}
+          onLogout={handleLogout}
+          onPracticeVocab={handleStudentPracticeVocab}
+        />
+      )}
 
-        {view === 'student-lesson' && activeLesson && (
-          <StudentLessonView 
-            lesson={activeLesson}
-            onBack={() => setView('student-dashboard')}
-          />
-        )}
+      {view === 'student-lesson' && activeLesson && (
+        <StudentLessonView 
+          lesson={activeLesson}
+          onBack={() => setView('student-dashboard')}
+        />
+      )}
 
-        {view === 'student-vocab' && (
-          <StudentVocabPractice 
-            studentName={studentName}
-            onBack={() => setView('student-dashboard')}
-          />
-        )}
+      {view === 'student-vocab' && (
+        <StudentVocabPractice 
+          studentName={studentName}
+          onBack={() => setView('student-dashboard')}
+        />
+      )}
 
-        {view === 'vocab-management' && (
-          <VocabManagement 
-            onBack={handleBackToDashboard}
-          />
-        )}
-      </div>
+      {view === 'vocab-management' && (
+        <VocabManagement 
+          onBack={handleBackToDashboard}
+        />
+      )}
     </div>
   );
 };
