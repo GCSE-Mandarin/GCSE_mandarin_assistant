@@ -464,25 +464,45 @@ Question Type: ${questionType || 'general'}
 Correct Answer: ${correctAnswer}
 Student's Answer: ${studentAnswer}
 
-**Evaluation Guidelines:**
-- Give 100% if the answer is exactly correct or demonstrates full understanding
-- Give partial credit (e.g., 50%, 75%, 80%, 90%) if the answer is partially correct:
-  - 90-95%: Almost perfect, minor spelling/formatting issues
-  - 75-85%: Most of the answer is correct, missing minor details
-  - 50-70%: Partially correct, shows some understanding but incomplete
-  - 25-45%: Some relevant information but mostly incorrect
-  - 0-20%: Mostly or completely incorrect
-- Consider these factors:
-  - Correctness of Chinese characters/words
-  - Correctness of pinyin (if applicable)
-  - Meaning/translation accuracy
-  - Grammar and sentence structure (if applicable)
-  - Overall understanding demonstrated
+**IMPORTANT - Partial Credit Rules:**
+You MUST give partial credit for partially correct answers. Be generous with partial credit to encourage learning.
+
+**Scoring Guidelines:**
+- 100%: Answer is completely correct or demonstrates full understanding
+- 90-95%: Almost perfect, only minor spelling/formatting/punctuation errors
+- 80-89%: Mostly correct, missing one small detail or has minor errors
+- 70-79%: Most content is correct, missing some details or has noticeable errors
+- 60-69%: More than half correct, shows good understanding but incomplete
+- 50-59%: HALF correct - if about 50% of the answer is right and 50% is wrong, give 50%
+- 40-49%: Less than half correct, but some meaningful understanding shown
+- 30-39%: Some relevant information but majority is incorrect
+- 20-29%: Very little correct, mostly incorrect but shows attempt
+- 10-19%: Almost completely wrong, minimal understanding
+- 0-9%: Completely incorrect, no understanding demonstrated
+
+**For half-right, half-wrong answers specifically:**
+- If approximately 50% of the answer is correct (e.g., half the characters are right, or meaning is partially correct), give 50%
+- If student got the main concept but got some details wrong, give 60-70%
+- If student got some parts right but missing other parts, calculate based on what percentage is correct
+
+**Evaluation Factors (weight evenly):**
+1. Correctness of Chinese characters/words (if applicable)
+2. Correctness of pinyin pronunciation (if applicable)
+3. Meaning/translation accuracy
+4. Grammar and sentence structure (if applicable)
+5. Overall understanding demonstrated
+
+**Example Scoring Scenarios:**
+- Student writes "你好" when correct answer is "你好" (hello) → 100%
+- Student writes "你号" when correct answer is "你好" (one character wrong) → 70-80%
+- Student writes "好" when correct answer is "你好" (missing one character) → 50-60%
+- Student writes "你好" when correct answer is "你好，我是老师" (correct part but incomplete) → 50%
+- Student writes something completely unrelated → 0-10%
 
 Return ONLY a JSON object with this exact format:
 {
   "score": <number from 0 to 100>,
-  "feedback": "<brief explanation of why this score was given>"
+  "feedback": "<brief, encouraging explanation of why this score was given, mention what was correct and what needs improvement>"
 }
 
 Do not include any other text, just the JSON object.`;
