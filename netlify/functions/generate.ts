@@ -61,6 +61,108 @@ const safeJsonParse = <T>(text: string, fallback: T): T => {
     }
 };
 
+// Rule-based scoring function for Chinese text evaluation
+const calculateRuleBasedScore = (correctAnswer: string, studentAnswer: string): { score: number; feedback: string } => {
+  // Normalize inputs
+  const correct = correctAnswer.trim();
+  const student = studentAnswer.trim();
+  
+  // 1. Exact match (text and punctuation) → 100%
+  if (correct === student) {
+    return {
+      score: 100,
+      feedback: 'Perfect! Your answer is exactly correct.'
+    };
+  }
+  
+  // Extract Chinese characters (remove punctuation, spaces, and non-Chinese characters for comparison)
+  // Chinese characters are in Unicode range \u4e00-\u9fff
+  const extractChineseChars = (text: string): string => {
+    return text.split('').filter(char => /[\u4e00-\u9fff]/.test(char)).join('');
+  };
+  
+  // Extract punctuation (Chinese and English punctuation)
+  const extractPunctuation = (text: string): string[] => {
+    // Common Chinese punctuation: ，。！？；：、""''（）【】《》
+    // Common English punctuation: , . ! ? ; : - " ' ( ) [ ] { }
+    return text.split('').filter(char => /[，。！？；：、""''（）【】《》,.!?;:\-"'()\[\]{}]/.test(char));
+  };
+  
+  const correctChars = extractChineseChars(correct);
+  const studentChars = extractChineseChars(student);
+  const correctPunctuation = extractPunctuation(correct);
+  const studentPunctuation = extractPunctuation(student);
+  
+  // Check if Chinese characters match
+  const charsMatch = correctChars === studentChars;
+  
+  // Check for any overlap (at least one Chinese character in common)
+  const hasOverlap = correctChars.length > 0 && studentChars.length > 0 && 
+    [...correctChars].some(char => studentChars.includes(char));
+  
+  // Check if punctuation matches (any correct punctuation)
+  const hasCorrectPunctuation = correctPunctuation.length > 0 && 
+    correctPunctuation.some(p => studentPunctuation.includes(p));
+  
+  // Check if all punctuation is different (only if there's punctuation in correct answer)
+  const allPunctuationDifferent = correctPunctuation.length > 0 && 
+    !correctPunctuation.some(p => studentPunctuation.includes(p));
+  
+  // Check if there's no punctuation in correct answer
+  const noPunctuationInCorrect = correctPunctuation.length === 0;
+  
+  // Apply scoring rules in priority order
+  if (charsMatch) {
+    // Chinese characters match - check punctuation cases
+    if (noPunctuationInCorrect) {
+      // No punctuation in correct answer
+      if (studentPunctuation.length === 0) {
+        // This should have been caught by exact match, but just in case
+        return {
+          score: 100,
+          feedback: 'Perfect! Your answer is correct.'
+        };
+      } else {
+        // Student has extra punctuation
+        return {
+          score: 75,
+          feedback: 'Excellent! Your Chinese characters are correct, but you have extra punctuation that should be removed.'
+        };
+      }
+    } else if (hasCorrectPunctuation) {
+      // 3. Chinese characters match + any correct punctuation → 75%
+      return {
+        score: 75,
+        feedback: 'Great! Your Chinese characters are correct and you have some correct punctuation. Just need to match all punctuation exactly.'
+      };
+    } else if (allPunctuationDifferent) {
+      // 2. Chinese characters match, but punctuation all different → 50%
+      return {
+        score: 50,
+        feedback: 'Good! Your Chinese characters are correct, but the punctuation needs to match the correct answer.'
+      };
+    } else {
+      // Chars match but punctuation situation is unclear (shouldn't happen, but fallback)
+      return {
+        score: 75,
+        feedback: 'Excellent! Your Chinese characters are correct. Check the punctuation carefully.'
+      };
+    }
+  } else if (hasOverlap) {
+    // 1. Any overlap → 25%
+    return {
+      score: 25,
+      feedback: 'You have some correct characters, but the answer needs more work. Keep practicing!'
+    };
+  } else {
+    // No overlap → 0%
+    return {
+      score: 0,
+      feedback: 'The answer is incorrect. Please review the correct answer and try again.'
+    };
+  }
+};
+
 export const handler: Handler = async (event, context) => {
   // CORS headers for all responses
   const corsHeaders = {
@@ -447,159 +549,70 @@ Answer their questions about this material or Mandarin in general. Keep answers 
           };
         }
 
-        if (!geminiApiKey) {
-          return {
-            statusCode: 500,
-            headers: corsHeaders,
-            body: JSON.stringify({ error: 'GEMINI_API_KEY not configured' }),
-          };
-        }
-
-        const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+        // Use rule-based scoring as primary method
+        console.log('[EvaluateAnswer] Using rule-based scoring');
+        const ruleBasedResult = calculateRuleBasedScore(correctAnswer, studentAnswer);
         
-        const prompt = `You are an IGCSE Mandarin teacher evaluating a student's answer. Evaluate the student's answer and provide a percentage score from 0 to 100.
+        // Optionally enhance feedback with AI (but keep the rule-based score)
+        let finalFeedback = ruleBasedResult.feedback;
+        
+        // Try to get AI-enhanced feedback if API key is available
+        if (geminiApiKey) {
+          try {
+            const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+            const feedbackPrompt = `You are an IGCSE Mandarin teacher. Provide brief, encouraging feedback for a student's answer.
 
 Question: ${question}
 Question Type: ${questionType || 'general'}
 Correct Answer: ${correctAnswer}
 Student's Answer: ${studentAnswer}
+Score: ${ruleBasedResult.score}%
 
-**IMPORTANT - Partial Credit Rules:**
-You MUST give partial credit for partially correct answers. Be generous with partial credit to encourage learning.
+The score has already been calculated using rule-based criteria:
+- 100%: Exact match (text and punctuation)
+- 75%: Chinese characters match + any correct punctuation
+- 50%: Chinese characters match but punctuation all different
+- 25%: Any overlap between student and correct answer
+- 0%: No overlap
 
-**Scoring Guidelines:**
-- 100%: Answer is completely correct or demonstrates full understanding
-- 90-95%: Almost perfect, only minor spelling/formatting/punctuation errors
-- 80-89%: Mostly correct, missing one small detail or has minor errors
-- 70-79%: Most content is correct, missing some details or has noticeable errors
-- 60-69%: More than half correct, shows good understanding but incomplete
-- 50-59%: HALF correct - if about 50% of the answer is right and 50% is wrong, give 50%
-- 40-49%: Less than half correct, but some meaningful understanding shown
-- 30-39%: Some relevant information but majority is incorrect
-- 20-29%: Very little correct, mostly incorrect but shows attempt
-- 10-19%: Almost completely wrong, minimal understanding
-- 0-9%: Completely incorrect, no understanding demonstrated
+Provide a brief, encouraging feedback message (1-2 sentences) that:
+1. Acknowledges what the student got right
+2. Gently points out what needs improvement
+3. Is encouraging and supportive
 
-**For half-right, half-wrong answers specifically:**
-- If approximately 50% of the answer is correct (e.g., half the characters are right, or meaning is partially correct), give 50%
-- If student got the main concept but got some details wrong, give 60-70%
-- If student got some parts right but missing other parts, calculate based on what percentage is correct
+Return ONLY the feedback text, no JSON, no quotes, just the feedback message.`;
 
-**Evaluation Factors (weight evenly):**
-1. Correctness of Chinese characters/words (if applicable)
-2. Correctness of pinyin pronunciation (if applicable)
-3. Meaning/translation accuracy
-4. Grammar and sentence structure (if applicable)
-5. Overall understanding demonstrated
-
-**Example Scoring Scenarios:**
-- Student writes "你好" when correct answer is "你好" (hello) → 100%
-- Student writes "你号" when correct answer is "你好" (one character wrong) → 70-80%
-- Student writes "好" when correct answer is "你好" (missing one character) → 50-60%
-- Student writes "你好" when correct answer is "你好，我是老师" (correct part but incomplete) → 50%
-- Student writes something completely unrelated → 0-10%
-
-Return ONLY a JSON object with this exact format:
-{
-  "score": <number from 0 to 100>,
-  "feedback": "<brief, encouraging explanation of why this score was given, mention what was correct and what needs improvement>"
-}
-
-Do not include any other text, just the JSON object.`;
-
-        try {
-          const result = await callWithRetry(async () => {
-            const response = await ai.models.generateContent({
-              model: 'gemini-2.5-flash',
-              contents: prompt,
-              config: {
-                responseMimeType: 'application/json',
-                maxOutputTokens: 500,
-              }
-            });
+            const aiResponse = await callWithRetry(async () => {
+              const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: feedbackPrompt,
+                config: {
+                  maxOutputTokens: 200,
+                }
+              });
+              return response.text;
+            }, 1); // Only 1 retry for feedback enhancement
             
-            // Use same pattern as other functions
-            return response.text;
-          });
-
-          let text = result || "";
-          console.log('[EvaluateAnswer] Raw response:', text.substring(0, 500));
-          
-          // Use a proper fallback object
-          const fallbackResult = { score: 0, feedback: 'Unable to parse AI evaluation response.' };
-          const parsed = safeJsonParse(text, fallbackResult);
-          
-          // Check if parsing failed (returned fallback) or if score is missing
-          if (!parsed || typeof parsed !== 'object' || parsed.score === undefined || parsed.score === null) {
-            console.error('[EvaluateAnswer] Failed to parse response or missing score field.');
-            console.error('[EvaluateAnswer] Parsed result:', parsed);
-            console.error('[EvaluateAnswer] Original text:', text);
-            
-            // Try to extract score and feedback from text using regex as fallback
-            let score = 0;
-            let feedback = 'Unable to parse AI evaluation. Please try again.';
-            
-            // Try to find score in text using regex (more flexible pattern)
-            const scoreMatch = text.match(/["']?score["']?\s*[:=]\s*(\d+)/i);
-            if (scoreMatch && scoreMatch[1]) {
-              score = parseInt(scoreMatch[1], 10);
-              console.log('[EvaluateAnswer] Extracted score from regex:', score);
+            if (aiResponse && aiResponse.trim()) {
+              finalFeedback = aiResponse.trim();
+              console.log('[EvaluateAnswer] AI-enhanced feedback:', finalFeedback);
             }
-            
-            // Try to find feedback (more flexible pattern)
-            const feedbackMatch = text.match(/["']?feedback["']?\s*[:=]\s*["']([^"']+)["']/i);
-            if (feedbackMatch && feedbackMatch[1]) {
-              feedback = feedbackMatch[1];
-              console.log('[EvaluateAnswer] Extracted feedback from regex:', feedback);
-            }
-            
-            // If we still don't have a score, try a simple heuristic based on answer similarity
-            if (score === 0 && studentAnswer && correctAnswer) {
-              const studentLower = studentAnswer.trim().toLowerCase();
-              const correctLower = correctAnswer.trim().toLowerCase();
-              
-              // Simple partial credit: if student answer contains some characters from correct answer
-              if (studentLower.length > 0 && correctLower.length > 0) {
-                const matchingChars = [...correctLower].filter(char => studentLower.includes(char)).length;
-                const similarity = (matchingChars / Math.max(correctLower.length, studentLower.length)) * 100;
-                score = Math.round(similarity);
-                feedback = `Partial credit based on answer similarity. Score: ${score}%`;
-                console.log('[EvaluateAnswer] Using similarity-based scoring:', score);
-              }
-            }
-            
-            score = Math.max(0, Math.min(100, Math.round(score || 0)));
-            
-            return {
-              statusCode: 200,
-              headers: corsHeaders,
-              body: JSON.stringify({ result: { score, feedback } }),
-            };
+          } catch (error: any) {
+            console.warn('[EvaluateAnswer] Could not enhance feedback with AI, using rule-based feedback:', error?.message);
+            // Continue with rule-based feedback
           }
-          
-          // Ensure score is between 0 and 100
-          const score = Math.max(0, Math.min(100, Math.round(parsed.score || 0)));
-          const feedback = parsed.feedback || 'Evaluation completed.';
-
-          return {
-            statusCode: 200,
-            headers: corsHeaders,
-            body: JSON.stringify({ result: { score, feedback } }),
-          };
-        } catch (error: any) {
-          console.error('[EvaluateAnswer] Error during evaluation:', error);
-          // Return a fallback response instead of throwing
-          return {
-            statusCode: 200,
-            headers: corsHeaders,
-            body: JSON.stringify({ 
-              result: { 
-                score: 0, 
-                feedback: `Evaluation error: ${error?.message || 'Unknown error'}. Please try again.` 
-              } 
-            }),
-          };
         }
+
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({ 
+            result: { 
+              score: ruleBasedResult.score, 
+              feedback: finalFeedback 
+            } 
+          }),
+        };
       }
 
       case 'check-keys': {
