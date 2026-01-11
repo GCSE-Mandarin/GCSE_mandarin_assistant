@@ -640,9 +640,29 @@ Answer their questions about this material or Mandarin in general. Keep answers 
           };
         }
 
-        // Use rule-based scoring as primary method
-        console.log('[EvaluateAnswer] Using rule-based scoring');
-        const ruleBasedResult = calculateRuleBasedScore(correctAnswer, studentAnswer);
+        // For choice questions (quiz type), use binary scoring (100% or 0%)
+        let ruleBasedResult: { score: number; feedback: string };
+        if (questionType === 'quiz') {
+          console.log('[EvaluateAnswer] Using binary scoring for choice question');
+          const correct = correctAnswer.trim();
+          const student = studentAnswer.trim();
+          
+          if (correct === student) {
+            ruleBasedResult = {
+              score: 100,
+              feedback: 'Correct! Great job!'
+            };
+          } else {
+            ruleBasedResult = {
+              score: 0,
+              feedback: 'Incorrect. Please review the correct answer and try again.'
+            };
+          }
+        } else {
+          // For translation/composition, use nuanced rule-based scoring
+          console.log('[EvaluateAnswer] Using rule-based scoring for text answer');
+          ruleBasedResult = calculateRuleBasedScore(correctAnswer, studentAnswer);
+        }
         
         // Optionally enhance feedback with AI (but keep the rule-based score)
         let finalFeedback = ruleBasedResult.feedback;
@@ -674,6 +694,15 @@ Answer their questions about this material or Mandarin in general. Keep answers 
               tutorExamplesSection += `\nUse these examples to understand how tutors typically evaluate answers. Match their style and standards in your feedback.\n`;
             }
             
+            const scoringCriteria = questionType === 'quiz' 
+              ? `- 100%: Exact match with correct answer
+- 0%: Answer does not match`
+              : `- 100%: Exact match (text and punctuation)
+- 75%: Chinese characters match + any correct punctuation
+- 50%: Chinese characters match but punctuation all different
+- 25%: Any overlap between student and correct answer
+- 0%: No overlap`;
+            
             const feedbackPrompt = `You are an IGCSE Mandarin teacher. Provide brief, encouraging feedback for a student's answer.
 
 Question: ${question}
@@ -682,12 +711,8 @@ Correct Answer: ${correctAnswer}
 Student's Answer: ${studentAnswer}
 Score: ${ruleBasedResult.score}%
 
-The score has already been calculated using rule-based criteria:
-- 100%: Exact match (text and punctuation)
-- 75%: Chinese characters match + any correct punctuation
-- 50%: Chinese characters match but punctuation all different
-- 25%: Any overlap between student and correct answer
-- 0%: No overlap${tutorExamplesSection}
+The score has already been calculated using ${questionType === 'quiz' ? 'binary' : 'rule-based'} criteria:
+${scoringCriteria}${tutorExamplesSection}
 
 Provide a brief, encouraging feedback message (1-2 sentences) that:
 1. Acknowledges what the student got right

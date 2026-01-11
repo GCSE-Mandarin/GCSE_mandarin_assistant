@@ -707,12 +707,6 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
                         <span className="text-xs font-bold text-slate-400 uppercase">Your Answer:</span>
                         <p className="text-slate-700 mt-1">{userAns}</p>
                       </div>
-                      {exFeedback && (
-                        <div className="p-3 bg-white rounded-lg border border-slate-200">
-                          <span className="text-xs font-bold text-slate-400 uppercase">AI Feedback:</span>
-                          <p className="text-slate-700 text-sm mt-1">{exFeedback}</p>
-                        </div>
-                      )}
                       {tutorComment && (
                         <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                           <span className="text-xs font-bold text-blue-700 uppercase">Tutor Comment:</span>
@@ -926,17 +920,6 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
                           <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-1 rounded">Perfect!</span>
                         )}
                       </div>
-                      {currentFeedback && (
-                        <p className={`text-sm mb-2 ${
-                          currentScore === 100 
-                            ? 'text-green-700' 
-                            : currentScore >= 50
-                            ? 'text-yellow-700'
-                            : 'text-red-700'
-                        }`}>
-                          {currentFeedback}
-                        </p>
-                      )}
                       {currentEx.answer && (
                         <div className="mt-2 pt-2 border-t border-slate-200">
                           <p className="text-xs font-bold text-slate-400 uppercase mb-1">Correct Answer:</p>
