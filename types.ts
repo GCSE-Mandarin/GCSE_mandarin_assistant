@@ -45,6 +45,9 @@ export interface AssignedLesson {
   userAnswers?: string[]; // Added to store student's specific input
   exerciseScores?: number[]; // Percentage score (0-100) for each exercise
   exerciseFeedback?: string[]; // AI-generated feedback for each exercise
+  tutorAdjustedScores?: number[]; // Tutor-adjusted scores (0-100) for each exercise
+  tutorComments?: string[]; // Tutor comments for each exercise
+  tutorOverallComment?: string; // Overall comment from tutor for the entire lesson
 }
 
 export type ViewState = 

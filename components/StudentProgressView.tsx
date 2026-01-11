@@ -1,8 +1,8 @@
 
 import React, { useEffect, useState } from 'react';
-import { getLessons, getVocabProgress } from '../services/storage';
+import { getLessons, getVocabProgress, updateLesson } from '../services/storage';
 import { AssignedLesson, VocabProgress } from '../types';
-import { ArrowLeft, User, BookOpen, CheckCircle2, Clock, Calendar, Loader2, Layers, Eye, X, Check, XCircle } from 'lucide-react';
+import { ArrowLeft, User, BookOpen, CheckCircle2, Clock, Calendar, Loader2, Layers, Eye, X, Check, XCircle, Edit2, Save } from 'lucide-react';
 
 interface Props {
   onBack: () => void;
@@ -20,6 +20,11 @@ export const StudentProgressView: React.FC<Props> = ({ onBack }) => {
   const [studentData, setStudentData] = useState<Record<string, StudentStats>>({});
   const [loading, setLoading] = useState(true);
   const [selectedLesson, setSelectedLesson] = useState<AssignedLesson | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedScores, setEditedScores] = useState<number[]>([]);
+  const [editedComments, setEditedComments] = useState<string[]>([]);
+  const [editedOverallComment, setEditedOverallComment] = useState<string>('');
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -90,6 +95,111 @@ export const StudentProgressView: React.FC<Props> = ({ onBack }) => {
   }, []);
 
   const students = Object.keys(studentData).sort();
+
+  // Initialize editing state when lesson is selected
+  const handleLessonSelect = (lesson: AssignedLesson) => {
+    setSelectedLesson(lesson);
+    setIsEditing(false);
+    // Initialize with existing tutor-adjusted scores or fallback to exercise scores
+    const exerciseScores = lesson.exerciseScores || [];
+    const tutorAdjustedScores = lesson.tutorAdjustedScores || exerciseScores;
+    setEditedScores([...tutorAdjustedScores]);
+    setEditedComments([...(lesson.tutorComments || new Array(lesson.exercises.length).fill(''))]);
+    setEditedOverallComment(lesson.tutorOverallComment || '');
+  };
+
+  // Calculate overall score from adjusted scores
+  const calculateOverallScore = (scores: number[]): number => {
+    if (scores.length === 0) return 0;
+    const sum = scores.reduce((acc, score) => acc + score, 0);
+    return Math.round(sum / scores.length);
+  };
+
+  // Handle saving tutor adjustments
+  const handleSaveAdjustments = async () => {
+    if (!selectedLesson) return;
+    
+    setSaving(true);
+    try {
+      const overallScore = calculateOverallScore(editedScores);
+      const updatedLesson: AssignedLesson = {
+        ...selectedLesson,
+        tutorAdjustedScores: editedScores,
+        tutorComments: editedComments,
+        tutorOverallComment: editedOverallComment,
+        score: overallScore, // Update overall score
+      };
+
+      await updateLesson(updatedLesson);
+      
+      // Update local state
+      setSelectedLesson(updatedLesson);
+      
+      // Refresh student data
+      const allLessons = await getLessons();
+      const allVocab = await getVocabProgress();
+      const stats: Record<string, StudentStats> = {};
+
+      // Process Lessons
+      allLessons.forEach(lesson => {
+        const name = lesson.studentName;
+        if (!stats[name]) {
+          stats[name] = {
+            totalLessons: 0,
+            completedLessons: 0,
+            averageScore: 0,
+            lessons: [],
+            vocab: {}
+          };
+        }
+        stats[name].lessons.push(lesson);
+        stats[name].totalLessons += 1;
+        if (lesson.completed) {
+          stats[name].completedLessons += 1;
+        }
+      });
+
+      // Process Vocab
+      allVocab.forEach(v => {
+        const name = v.studentName;
+        if (!stats[name]) {
+          stats[name] = {
+            totalLessons: 0,
+            completedLessons: 0,
+            averageScore: 0,
+            lessons: [],
+            vocab: {}
+          };
+        }
+        if (!stats[name].vocab[v.category]) {
+          stats[name].vocab[v.category] = [];
+        }
+        if (!stats[name].vocab[v.category].find(existing => existing.word === v.word)) {
+          stats[name].vocab[v.category].push(v);
+        }
+      });
+
+      // Calculate averages
+      Object.keys(stats).forEach(name => {
+        const completed = stats[name].lessons.filter(l => l.completed);
+        if (completed.length > 0) {
+          const totalScorePercent = completed.reduce((acc, l) => {
+            const score = l.score || 0;
+            return acc + score;
+          }, 0);
+          stats[name].averageScore = Math.round(totalScorePercent / completed.length);
+        }
+      });
+
+      setStudentData(stats);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to save adjustments:', error);
+      alert('Failed to save adjustments. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="h-full bg-slate-50 flex flex-col relative">
@@ -182,7 +292,7 @@ export const StudentProgressView: React.FC<Props> = ({ onBack }) => {
                                                 {lesson.score || 0}%
                                             </span>
                                             <button 
-                                                onClick={() => setSelectedLesson(lesson)}
+                                                onClick={() => handleLessonSelect(lesson)}
                                                 className="p-1.5 hover:bg-white rounded-full text-slate-400 hover:text-blue-600 transition-colors shadow-sm"
                                                 title="View Details"
                                             >
@@ -241,15 +351,32 @@ export const StudentProgressView: React.FC<Props> = ({ onBack }) => {
       {/* Lesson Details Modal */}
       {selectedLesson && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl h-[80vh] flex flex-col overflow-hidden">
+             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl h-[85vh] flex flex-col overflow-hidden">
                 <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                    <div>
+                    <div className="flex-1">
                         <h3 className="font-bold text-slate-800 text-lg">Results: {selectedLesson.pointDescription}</h3>
                         <p className="text-xs text-slate-500">Student: {selectedLesson.studentName}</p>
+                        {!isEditing && selectedLesson.tutorOverallComment && (
+                          <p className="text-sm text-blue-600 mt-2 italic">"{selectedLesson.tutorOverallComment}"</p>
+                        )}
                     </div>
-                    <button onClick={() => setSelectedLesson(null)} className="text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full p-1 transition-colors">
-                        <X size={24} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {!isEditing && (
+                          <button 
+                            onClick={() => setIsEditing(true)}
+                            className="p-2 hover:bg-blue-100 rounded-lg text-blue-600 transition-colors"
+                            title="Edit Scores & Comments"
+                          >
+                            <Edit2 size={20} />
+                          </button>
+                        )}
+                        <button onClick={() => {
+                          setSelectedLesson(null);
+                          setIsEditing(false);
+                        }} className="text-slate-400 hover:text-slate-600 hover:bg-slate-200 rounded-full p-1 transition-colors">
+                            <X size={24} />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
@@ -258,47 +385,78 @@ export const StudentProgressView: React.FC<Props> = ({ onBack }) => {
                              const userAnswers = selectedLesson.userAnswers || [];
                              const exerciseScores = selectedLesson.exerciseScores || [];
                              const exerciseFeedback = selectedLesson.exerciseFeedback || [];
-                             const exScore = exerciseScores[idx] || 0;
+                             const tutorAdjustedScores = selectedLesson.tutorAdjustedScores || exerciseScores;
+                             const tutorComments = selectedLesson.tutorComments || [];
+                             
+                             // Use adjusted score if available, otherwise original
+                             const displayScore = isEditing ? (editedScores[idx] ?? exerciseScores[idx] ?? 0) : (tutorAdjustedScores[idx] ?? exerciseScores[idx] ?? 0);
+                             const originalScore = exerciseScores[idx] || 0;
                              const exFeedback = exerciseFeedback[idx] || '';
+                             const tutorComment = tutorComments[idx] || '';
                              const userAns = userAnswers[idx] || '(No answer)';
-                             const borderColor = exScore === 100 ? 'border-green-300' : exScore >= 50 ? 'border-yellow-300' : 'border-red-300';
-                             const bgColor = exScore === 100 ? 'bg-green-50' : exScore >= 50 ? 'bg-yellow-50' : 'bg-red-50';
-                             const scoreColor = exScore === 100 ? 'text-green-600' : exScore >= 50 ? 'text-yellow-600' : 'text-red-600';
-                             const iconColor = exScore === 100 ? 'text-green-500' : exScore >= 50 ? 'text-yellow-500' : 'text-red-500';
+                             
+                             const borderColor = displayScore === 100 ? 'border-green-300' : displayScore >= 50 ? 'border-yellow-300' : 'border-red-300';
+                             const bgColor = displayScore === 100 ? 'bg-green-50' : displayScore >= 50 ? 'bg-yellow-50' : 'bg-red-50';
+                             const scoreColor = displayScore === 100 ? 'text-green-600' : displayScore >= 50 ? 'text-yellow-600' : 'text-red-600';
+                             const iconColor = displayScore === 100 ? 'text-green-500' : displayScore >= 50 ? 'text-yellow-500' : 'text-red-500';
 
                              return (
                                 <div key={idx} className={`bg-white p-5 rounded-xl border-2 ${borderColor} ${bgColor}`}>
                                     <div className="flex justify-between items-start mb-3">
-                                        <div className="flex items-start gap-3">
+                                        <div className="flex items-start gap-3 flex-1">
                                             <div className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold ${
-                                              exScore === 100 ? 'bg-green-500' : exScore >= 50 ? 'bg-yellow-500' : 'bg-red-500'
+                                              displayScore === 100 ? 'bg-green-500' : displayScore >= 50 ? 'bg-yellow-500' : 'bg-red-500'
                                             }`}>
                                                 {idx + 1}
                                             </div>
                                             <h4 className="font-bold text-slate-800 chinese-text text-lg">{ex.question}</h4>
                                         </div>
                                         <div className="flex flex-col items-end gap-1">
-                                            <span className={`font-bold text-lg ${scoreColor}`}>{exScore}%</span>
-                                            {exScore === 100 ? (
-                                              <Check className={iconColor} size={20} />
+                                            {isEditing ? (
+                                              <div className="flex items-center gap-2">
+                                                <input
+                                                  type="number"
+                                                  min="0"
+                                                  max="100"
+                                                  value={editedScores[idx] ?? originalScore}
+                                                  onChange={(e) => {
+                                                    const newScores = [...editedScores];
+                                                    const value = Math.max(0, Math.min(100, parseInt(e.target.value) || 0));
+                                                    newScores[idx] = value;
+                                                    setEditedScores(newScores);
+                                                  }}
+                                                  className="w-20 px-2 py-1 border border-slate-300 rounded text-lg font-bold text-center"
+                                                />
+                                                <span className="text-slate-500">%</span>
+                                              </div>
                                             ) : (
-                                              <XCircle className={iconColor} size={20} />
+                                              <>
+                                                <span className={`font-bold text-lg ${scoreColor}`}>{displayScore}%</span>
+                                                {displayScore !== originalScore && (
+                                                  <span className="text-xs text-slate-400 line-through">(was {originalScore}%)</span>
+                                                )}
+                                                {displayScore === 100 ? (
+                                                  <Check className={iconColor} size={20} />
+                                                ) : (
+                                                  <XCircle className={iconColor} size={20} />
+                                                )}
+                                              </>
                                             )}
                                         </div>
                                     </div>
                                     
                                     <div className="ml-9 space-y-3">
-                                        <div className={`p-3 rounded-lg ${exScore === 100 ? 'bg-green-100' : exScore >= 50 ? 'bg-yellow-100' : 'bg-red-100'}`}>
+                                        <div className={`p-3 rounded-lg ${displayScore === 100 ? 'bg-green-100' : displayScore >= 50 ? 'bg-yellow-100' : 'bg-red-100'}`}>
                                             <p className="text-xs font-bold uppercase tracking-wider mb-1 opacity-60">Student Answer</p>
                                             <p className={`font-medium chinese-text ${
-                                              exScore === 100 ? 'text-green-800' : exScore >= 50 ? 'text-yellow-800' : 'text-red-800'
+                                              displayScore === 100 ? 'text-green-800' : displayScore >= 50 ? 'text-yellow-800' : 'text-red-800'
                                             }`}>
                                                 {userAns}
                                             </p>
                                         </div>
                                         {exFeedback && (
                                             <div className="p-3 rounded-lg bg-white border border-slate-200">
-                                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Feedback</p>
+                                                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">AI Feedback</p>
                                                 <p className="text-sm text-slate-700">{exFeedback}</p>
                                             </div>
                                         )}
@@ -308,20 +466,95 @@ export const StudentProgressView: React.FC<Props> = ({ onBack }) => {
                                                 <p className="font-medium text-slate-800 chinese-text">{ex.answer}</p>
                                             </div>
                                         )}
+                                        {isEditing ? (
+                                          <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+                                            <p className="text-xs font-bold text-blue-700 uppercase tracking-wider mb-2">Your Comment</p>
+                                            <textarea
+                                              value={editedComments[idx] || ''}
+                                              onChange={(e) => {
+                                                const newComments = [...editedComments];
+                                                newComments[idx] = e.target.value;
+                                                setEditedComments(newComments);
+                                              }}
+                                              placeholder="Add a comment for the student..."
+                                              className="w-full p-2 border border-blue-300 rounded text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                              rows={3}
+                                            />
+                                          </div>
+                                        ) : tutorComment && (
+                                          <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+                                            <p className="text-xs font-bold text-blue-700 uppercase tracking-wider mb-1">Tutor Comment</p>
+                                            <p className="text-sm text-blue-900">{tutorComment}</p>
+                                          </div>
+                                        )}
                                     </div>
                                 </div>
                              );
                         })}
+                        
+                        {/* Overall Comment Section */}
+                        {isEditing && (
+                          <div className="bg-blue-50 border-2 border-blue-200 p-5 rounded-xl">
+                            <p className="text-xs font-bold text-blue-700 uppercase tracking-wider mb-2">Overall Comment</p>
+                            <textarea
+                              value={editedOverallComment}
+                              onChange={(e) => setEditedOverallComment(e.target.value)}
+                              placeholder="Add an overall comment for this lesson..."
+                              className="w-full p-3 border border-blue-300 rounded text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              rows={4}
+                            />
+                          </div>
+                        )}
                     </div>
                 </div>
 
-                <div className="p-4 border-t border-slate-100 flex justify-end bg-white">
-                    <button 
-                        onClick={() => setSelectedLesson(null)}
-                        className="bg-slate-900 text-white px-6 py-2 rounded-lg hover:bg-black transition-colors font-medium"
-                    >
+                <div className="p-4 border-t border-slate-100 flex justify-between items-center bg-white">
+                    {isEditing ? (
+                      <>
+                        <button 
+                          onClick={() => {
+                            setIsEditing(false);
+                            // Reset to original values
+                            const exerciseScores = selectedLesson.exerciseScores || [];
+                            const tutorAdjustedScores = selectedLesson.tutorAdjustedScores || exerciseScores;
+                            setEditedScores([...tutorAdjustedScores]);
+                            setEditedComments([...(selectedLesson.tutorComments || new Array(selectedLesson.exercises.length).fill(''))]);
+                            setEditedOverallComment(selectedLesson.tutorOverallComment || '');
+                          }}
+                          className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-100 transition-colors font-medium"
+                          disabled={saving}
+                        >
+                          Cancel
+                        </button>
+                        <button 
+                          onClick={handleSaveAdjustments}
+                          disabled={saving}
+                          className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {saving ? (
+                            <>
+                              <Loader2 size={16} className="animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Save size={16} />
+                              Save Changes
+                            </>
+                          )}
+                        </button>
+                      </>
+                    ) : (
+                      <button 
+                        onClick={() => {
+                          setSelectedLesson(null);
+                          setIsEditing(false);
+                        }}
+                        className="bg-slate-900 text-white px-6 py-2 rounded-lg hover:bg-black transition-colors font-medium ml-auto"
+                      >
                         Close Results
-                    </button>
+                      </button>
+                    )}
                 </div>
              </div>
         </div>

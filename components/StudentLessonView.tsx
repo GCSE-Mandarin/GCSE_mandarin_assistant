@@ -143,10 +143,12 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
     lesson.userAnswers || new Array(lesson.exercises.length).fill('')
   );
   const [submitted, setSubmitted] = useState(lesson.completed);
+  // Use tutor-adjusted score if available, otherwise use original score
   const [score, setScore] = useState(lesson.score || 0);
-  const [exerciseScores, setExerciseScores] = useState<number[]>(
-    lesson.exerciseScores || new Array(lesson.exercises.length).fill(0)
-  );
+  // Use tutor-adjusted scores if available, otherwise use exercise scores
+  const originalExerciseScores = lesson.exerciseScores || new Array(lesson.exercises.length).fill(0);
+  const tutorAdjustedScores = lesson.tutorAdjustedScores || originalExerciseScores;
+  const [exerciseScores, setExerciseScores] = useState<number[]>(tutorAdjustedScores);
   const [exerciseFeedback, setExerciseFeedback] = useState<string[]>(
     lesson.exerciseFeedback || new Array(lesson.exercises.length).fill('')
   );
@@ -668,6 +670,7 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
               {lesson.exercises.map((ex, idx) => {
                 const exScore = exerciseScores[idx] || 0;
                 const exFeedback = exerciseFeedback[idx] || '';
+                const tutorComment = (lesson.tutorComments || [])[idx] || '';
                 const userAns = answers[idx] || '(No answer)';
                 const borderColor = exScore === 100 ? 'border-green-300' : exScore >= 50 ? 'border-yellow-300' : 'border-red-300';
                 const bgColor = exScore === 100 ? 'bg-green-50' : exScore >= 50 ? 'bg-yellow-50' : 'bg-red-50';
@@ -706,8 +709,14 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
                       </div>
                       {exFeedback && (
                         <div className="p-3 bg-white rounded-lg border border-slate-200">
-                          <span className="text-xs font-bold text-slate-400 uppercase">Feedback:</span>
+                          <span className="text-xs font-bold text-slate-400 uppercase">AI Feedback:</span>
                           <p className="text-slate-700 text-sm mt-1">{exFeedback}</p>
+                        </div>
+                      )}
+                      {tutorComment && (
+                        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <span className="text-xs font-bold text-blue-700 uppercase">Tutor Comment:</span>
+                          <p className="text-blue-900 text-sm mt-1">{tutorComment}</p>
                         </div>
                       )}
                       {ex.answer && (
@@ -770,6 +779,12 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+              {lesson.tutorOverallComment && (
+                <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                  <p className="text-sm font-bold text-blue-700 uppercase mb-2">Tutor's Overall Comment</p>
+                  <p className="text-blue-900 text-sm">{lesson.tutorOverallComment}</p>
                 </div>
               )}
               <div className="flex gap-3">

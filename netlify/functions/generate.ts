@@ -1,6 +1,7 @@
 import { Handler } from '@netlify/functions';
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import OpenAI from "openai";
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Helper for exponential backoff retry
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -59,6 +60,96 @@ const safeJsonParse = <T>(text: string, fallback: T): T => {
         console.error("JSON Parse failed", e);
         return fallback;
     }
+};
+
+// Supabase client initialization
+const getSupabaseClient = (): SupabaseClient | null => {
+  const supabaseUrl = process.env.SUPABASE_URL || 'https://ujyjsmlasctasluxpuyn.supabase.co';
+  const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqeWpzbWxhc2N0YXNsdXhwdXluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0ODM3MDAsImV4cCI6MjA2MTA1OTcwMH0.0GXUKWhJ8Ck9zSkslKvrKOhFnsi-5jO0TT4qLAH5yf4';
+  
+  try {
+    return createClient(supabaseUrl, supabaseKey);
+  } catch (e) {
+    console.error("Failed to initialize Supabase client", e);
+    return null;
+  }
+};
+
+// Fetch tutor-adjusted examples from Supabase for few-shot learning
+const fetchTutorExamples = async (limit: number = 5): Promise<Array<{
+  question: string;
+  correctAnswer: string;
+  studentAnswer: string;
+  aiScore: number;
+  tutorAdjustedScore: number;
+  tutorComment?: string;
+}>> => {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    console.warn('[TutorExamples] Supabase not available, skipping tutor examples');
+    return [];
+  }
+
+  try {
+    // Fetch recent lessons (we'll filter for tutor adjustments in code)
+    // PostgREST JSONB filtering can be tricky, so we fetch more and filter client-side
+    const { data, error } = await supabase
+      .from('lessons')
+      .select('data')
+      .order('created_at', { ascending: false })
+      .limit(limit * 5); // Fetch more than needed to filter
+
+    if (error) {
+      console.warn('[TutorExamples] Error fetching tutor examples:', error);
+      return [];
+    }
+
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    const examples: Array<{
+      question: string;
+      correctAnswer: string;
+      studentAnswer: string;
+      aiScore: number;
+      tutorAdjustedScore: number;
+      tutorComment?: string;
+    }> = [];
+
+    // Extract examples from lessons
+    for (const row of data) {
+      const lesson = row.data as any;
+      if (!lesson.exercises || !lesson.exerciseScores || !lesson.tutorAdjustedScores || !lesson.userAnswers) {
+        continue;
+      }
+
+      // Extract examples where tutor adjusted the score
+      for (let i = 0; i < lesson.exercises.length && examples.length < limit; i++) {
+        const exercise = lesson.exercises[i];
+        const aiScore = lesson.exerciseScores[i];
+        const tutorScore = lesson.tutorAdjustedScores[i];
+        const studentAnswer = lesson.userAnswers[i];
+
+        // Only include examples where tutor made a change
+        if (tutorScore !== undefined && tutorScore !== null && aiScore !== tutorScore && exercise.answer && studentAnswer) {
+          examples.push({
+            question: exercise.question || '',
+            correctAnswer: exercise.answer,
+            studentAnswer: studentAnswer,
+            aiScore: aiScore || 0,
+            tutorAdjustedScore: tutorScore,
+            tutorComment: lesson.tutorComments?.[i] || undefined
+          });
+        }
+      }
+    }
+
+    return examples.slice(0, limit);
+  } catch (error) {
+    console.warn('[TutorExamples] Error processing tutor examples:', error);
+    return [];
+  }
 };
 
 // Rule-based scoring function for Chinese text evaluation
@@ -559,7 +650,30 @@ Answer their questions about this material or Mandarin in general. Keep answers 
         // Try to get AI-enhanced feedback if API key is available
         if (geminiApiKey) {
           try {
+            // Fetch tutor examples for few-shot learning
+            const tutorExamples = await fetchTutorExamples(3);
+            
             const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+            
+            // Build tutor examples section if available
+            let tutorExamplesSection = '';
+            if (tutorExamples.length > 0) {
+              tutorExamplesSection = `\n\n**Learn from Tutor Examples (how tutors typically adjust scores):**\n`;
+              tutorExamples.forEach((ex, idx) => {
+                tutorExamplesSection += `\nExample ${idx + 1}:\n`;
+                tutorExamplesSection += `- Question: ${ex.question}\n`;
+                tutorExamplesSection += `- Correct Answer: ${ex.correctAnswer}\n`;
+                tutorExamplesSection += `- Student Answer: ${ex.studentAnswer}\n`;
+                tutorExamplesSection += `- AI Score: ${ex.aiScore}%\n`;
+                tutorExamplesSection += `- Tutor Adjusted Score: ${ex.tutorAdjustedScore}%\n`;
+                if (ex.tutorComment) {
+                  tutorExamplesSection += `- Tutor Comment: "${ex.tutorComment}"\n`;
+                }
+                tutorExamplesSection += `(Note: Tutor adjusted from ${ex.aiScore}% to ${ex.tutorAdjustedScore}%)\n`;
+              });
+              tutorExamplesSection += `\nUse these examples to understand how tutors typically evaluate answers. Match their style and standards in your feedback.\n`;
+            }
+            
             const feedbackPrompt = `You are an IGCSE Mandarin teacher. Provide brief, encouraging feedback for a student's answer.
 
 Question: ${question}
@@ -573,12 +687,13 @@ The score has already been calculated using rule-based criteria:
 - 75%: Chinese characters match + any correct punctuation
 - 50%: Chinese characters match but punctuation all different
 - 25%: Any overlap between student and correct answer
-- 0%: No overlap
+- 0%: No overlap${tutorExamplesSection}
 
 Provide a brief, encouraging feedback message (1-2 sentences) that:
 1. Acknowledges what the student got right
 2. Gently points out what needs improvement
 3. Is encouraging and supportive
+4. Follows the style and standards shown in the tutor examples above
 
 Return ONLY the feedback text, no JSON, no quotes, just the feedback message.`;
 

@@ -25,6 +25,18 @@ This app uses server-side Netlify functions to handle all AI API calls. API keys
    - Scope: All scopes (or specific if needed)
    - Note: Only needed for better single character pronunciation
 
+   **SUPABASE_URL** (Optional but Recommended)
+   - Key: `SUPABASE_URL`
+   - Value: Your Supabase project URL (e.g., `https://xxxxx.supabase.co`)
+   - Scope: All scopes
+   - Note: Used for fetching tutor-adjusted examples to improve AI evaluation. Default credentials are used if not set.
+
+   **SUPABASE_ANON_KEY** (Optional but Recommended)
+   - Key: `SUPABASE_ANON_KEY`
+   - Value: Your Supabase anonymous/public key
+   - Scope: All scopes
+   - Note: Used for fetching tutor-adjusted examples to improve AI evaluation. Default credentials are used if not set.
+
 4. **Redeploy**
    - After adding variables, go to **Deploys** tab
    - Click **Trigger deploy** > **Deploy site**
@@ -36,6 +48,7 @@ This app uses server-side Netlify functions to handle all AI API calls. API keys
 - **Security**: API keys are stored server-side and never exposed to the client
 - **Redeploy Required**: Environment variables are only available after a new deployment
 - **Function Location**: All AI calls go through `/.netlify/functions/generate`
+- **Supabase Integration**: The AI evaluation system learns from tutor adjustments stored in Supabase. Tutor-adjusted scores and comments are saved in Supabase, and the AI uses these as examples to improve future evaluations (few-shot learning).
 
 ## Local Development
 
