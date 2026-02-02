@@ -644,10 +644,19 @@ Answer their questions about this material or Mandarin in general. Keep answers 
         let ruleBasedResult: { score: number; feedback: string };
         if (questionType === 'quiz') {
           console.log('[EvaluateAnswer] Using binary scoring for choice question');
+          console.log('[EvaluateAnswer] Correct answer:', JSON.stringify(correctAnswer));
+          console.log('[EvaluateAnswer] Student answer:', JSON.stringify(studentAnswer));
+          
+          // Normalize both answers: trim whitespace and compare
           const correct = correctAnswer.trim();
           const student = studentAnswer.trim();
           
-          if (correct === student) {
+          // For quiz questions, do exact match (case-sensitive for Chinese, but handle whitespace)
+          const isMatch = correct === student;
+          
+          console.log('[EvaluateAnswer] Comparison result:', isMatch);
+          
+          if (isMatch) {
             ruleBasedResult = {
               score: 100,
               feedback: 'Correct! Great job!'

@@ -303,10 +303,25 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
     setCurrentFeedback('');
 
     try {
+      // For quiz questions, handle the case where correct answer might be a letter (A, B, C, D)
+      // but student selected the option text. Map letter to option text if needed.
+      let correctAnswerToCompare = currentEx.answer;
+      if (currentEx.type === 'quiz' && currentEx.options && currentEx.options.length > 0) {
+        const trimmedAnswer = currentEx.answer.trim();
+        // Check if answer is a single letter (A-Z)
+        if (/^[A-Z]$/i.test(trimmedAnswer)) {
+          // Map letter to option index (A=0, B=1, C=2, D=3, etc.)
+          const letterIndex = trimmedAnswer.toUpperCase().charCodeAt(0) - 'A'.charCodeAt(0);
+          if (letterIndex >= 0 && letterIndex < currentEx.options.length) {
+            correctAnswerToCompare = currentEx.options[letterIndex];
+          }
+        }
+      }
+
       // Use AI to evaluate the answer and get a percentage score
       const evaluation = await evaluateAnswer(
         currentEx.question,
-        currentEx.answer,
+        correctAnswerToCompare,
         userAns,
         currentEx.type
       );
