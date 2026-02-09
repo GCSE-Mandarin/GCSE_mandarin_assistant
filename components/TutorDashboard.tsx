@@ -7,6 +7,7 @@ interface Props {
   onBack: () => void;
   onSettings: () => void;
   onManageVocab: () => void;
+  onCurriculum: () => void;
 }
 
 export const TutorDashboard: React.FC<Props> = ({
@@ -14,7 +15,8 @@ export const TutorDashboard: React.FC<Props> = ({
   onViewProgress,
   onBack,
   onSettings,
-  onManageVocab
+  onManageVocab,
+  onCurriculum
 }) => {
   return (
     <div className="w-full max-w-4xl mx-auto relative p-4 sm:p-6 pb-12">
@@ -90,6 +92,23 @@ export const TutorDashboard: React.FC<Props> = ({
           </p>
           <div className="mt-4 sm:mt-6 flex items-center text-blue-600 font-semibold text-sm sm:text-base group-hover:translate-x-1 transition-transform">
             View Reports →
+          </div>
+        </button>
+
+        {/* Curriculum Card */}
+        <button
+          onClick={onCurriculum}
+          className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 hover:border-purple-300 hover:shadow-xl transition-all group text-left flex flex-col min-h-[240px] sm:h-64 touch-manipulation active:scale-[0.98]"
+        >
+          <div className="bg-purple-50 w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-purple-100 transition-colors">
+            <GraduationCap className="text-purple-600 w-7 h-7 sm:w-8 sm:h-8" />
+          </div>
+          <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">Curriculum</h3>
+          <p className="text-sm sm:text-base text-slate-500 mb-auto">
+            Review and adjust the overall course structure and learning objectives.
+          </p>
+          <div className="mt-4 sm:mt-6 flex items-center text-purple-600 font-semibold text-sm sm:text-base group-hover:translate-x-1 transition-transform">
+            View Curriculum →
           </div>
         </button>
       </div>

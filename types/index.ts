@@ -34,6 +34,7 @@ export interface GeneratedContent {
 export interface AssignedLesson {
   id: string;
   studentName: string;
+  studentId?: string; // Add ID field
   stageTitle: string;
   topicTitle: string;
   pointDescription: string;
@@ -65,6 +66,7 @@ export type ViewState =
 
 export interface StudentProfile {
   name: string;
+  studentId?: string; // Add ID field
   stageId: number;
 }
 
@@ -100,4 +102,12 @@ export interface VocabList {
   characters: string[]; // Array of individual Chinese characters
   uploadedAt: string;
   fileName?: string;
+}
+
+export interface Student {
+  id: string;
+  name: string;
+  age_years?: number;
+  profile_id?: string;
+  targets?: string[];
 }

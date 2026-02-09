@@ -10,6 +10,7 @@ function CurriculumContent() {
   const searchParams = useSearchParams();
   const studentName = searchParams.get('student');
   const stageId = searchParams.get('stage');
+  const studentId = searchParams.get('studentId');
 
   if (!studentName || !stageId) return <div>Missing profile data</div>;
 
@@ -17,6 +18,9 @@ function CurriculumContent() {
     const params = new URLSearchParams({
       student: studentName
     });
+    if (studentId) {
+      params.append('studentId', studentId);
+    }
     router.push(`/tutor/editor/${stage.id}/${topic.id}/${point.id}?${params.toString()}`);
   };
 

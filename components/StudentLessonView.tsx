@@ -212,7 +212,7 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
         const isBullet = /^[-*•]\s/.test(trimmed) || /^\d+\.\s/.test(trimmed);
         // Check if this looks like an example (contains Chinese characters with pinyin pattern)
         const isExample = /[\u4e00-\u9fa5].*\([a-zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]+.*\)/.test(trimmed) || 
-                         /^[*�?]\s.*[\u4e00-\u9fa5]/.test(trimmed) ||
+                         /^[*•-]\s.*[\u4e00-\u9fa5]/.test(trimmed) ||
                          /^Example|^例子|^For example/i.test(trimmed);
         
         // If we hit a new bullet/example and have content, save current chunk
@@ -439,8 +439,8 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
     setAudioLoading(true);
     
     try {
-        const base64Audio = await generateSpeech(textToPlay);
-        if (!base64Audio) throw new Error("No audio returned");
+        const speechResult = await generateSpeech(textToPlay);
+        if (!speechResult) throw new Error("No audio returned");
 
         if (!audioContextRef.current) {
             audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
@@ -451,8 +451,15 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
             await ctx.resume();
         }
 
+        let audioBytes: Uint8Array;
+        if (typeof speechResult === 'string') {
+          audioBytes = decode(speechResult);
+        } else {
+          audioBytes = new Uint8Array(speechResult.audioData);
+        }
+
         const audioBuffer = await decodeAudioData(
-            decode(base64Audio),
+            audioBytes,
             ctx,
             24000,
             1

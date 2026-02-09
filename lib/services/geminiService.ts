@@ -1,7 +1,7 @@
 // All AI calls now go through Netlify function at /.netlify/functions/generate
 // API keys are stored securely on the server and never exposed to the client
 
-import { Exercise, VocabWord, WordDetails } from "../types";
+import { Exercise, VocabWord, WordDetails } from "@/types";
 
 // Helper to call the Netlify function
 const callNetlifyFunction = async (action: string, params: any): Promise<any> => {

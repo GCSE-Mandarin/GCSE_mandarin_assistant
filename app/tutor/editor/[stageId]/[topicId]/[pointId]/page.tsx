@@ -10,6 +10,7 @@ function EditorContent({ params }: { params: { stageId: string, topicId: string,
   const router = useRouter();
   const searchParams = useSearchParams();
   const studentName = searchParams.get('student') || 'Student';
+  const studentId = searchParams.get('studentId') || undefined;
 
   const { stageId, topicId, pointId } = params;
 
@@ -31,6 +32,9 @@ function EditorContent({ params }: { params: { stageId: string, topicId: string,
         student: studentName,
         stage: stageId
     });
+    if (studentId) {
+      p.append('studentId', studentId);
+    }
     router.push(`/tutor/curriculum?${p.toString()}`);
   };
 
@@ -41,6 +45,7 @@ function EditorContent({ params }: { params: { stageId: string, topicId: string,
       topic={data.topic}
       point={data.point}
       studentName={studentName}
+      studentId={studentId}
       onBack={handleBack}
     />
   );

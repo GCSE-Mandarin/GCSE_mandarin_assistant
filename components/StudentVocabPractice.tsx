@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect, useRef } from 'react';
 import { generateVocabularyList, generateWordDetails, generateSpeech } from '@/lib/services/geminiService';
 import { VocabWord, WordDetails, VocabProgress } from '../types';
@@ -205,9 +205,9 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
         } else {
           // Extract individual characters from AI-generated words
           const allChars = new Set<string>();
-          words.forEach(word => {
+          words.forEach((word: VocabWord) => {
             // Split multi-character words into individual characters
-            word.character.split('').forEach(char => {
+            word.character.split('').forEach((char: string) => {
               if (/[\u4e00-\u9fa5]/.test(char)) {
                 allChars.add(char);
               }
@@ -552,14 +552,6 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
           console.log("Audio playback ended");
           playbackStarted = true;
           setAudioLoading(false);
-        };
-        
-        source.onerror = (e) => {
-          clearTimeout(timeoutId);
-          console.error("Audio source error:", e);
-          playbackStarted = true;
-          setAudioLoading(false);
-          alert("Error playing audio. Please try again.");
         };
         
         console.log("Starting audio playback, context state:", ctx.state);
@@ -1316,7 +1308,7 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
                          )}
                          <p className="text-sm text-slate-600 font-medium">
                              {isRecording ? (
-                                 <span className="text-red-600">�?Recording... Click to stop</span>
+                                 <span className="text-red-600">● Recording... Click to stop</span>
                              ) : (
                                  "Tap the microphone to start recording"
                              )}

@@ -13,6 +13,9 @@ export default function OnboardingPage() {
       student: profile.name,
       stage: profile.stageId.toString()
     });
+    if (profile.studentId) {
+      params.append('studentId', profile.studentId);
+    }
     router.push(`/tutor/curriculum?${params.toString()}`);
   };
 

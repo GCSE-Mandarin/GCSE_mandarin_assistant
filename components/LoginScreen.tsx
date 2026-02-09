@@ -1,19 +1,38 @@
 import React, { useState } from 'react';
-import { GraduationCap, BookOpen, ChevronRight, User } from 'lucide-react';
+import { GraduationCap, BookOpen, ChevronRight, User, Loader2, AlertCircle } from 'lucide-react';
+import { findStudentByName } from '@/lib/services/storage';
+import { Student } from '@/types';
 
 interface Props {
   onTutorSelect: () => void;
-  onStudentLogin: (name: string) => void;
+  onStudentLogin: (student: Student) => void;
 }
 
 export const LoginScreen: React.FC<Props> = ({ onTutorSelect, onStudentLogin }) => {
   const [role, setRole] = useState<'selection' | 'student'>('selection');
   const [studentName, setStudentName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleStudentSubmit = (e: React.FormEvent) => {
+  const handleStudentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (studentName.trim()) {
-      onStudentLogin(studentName);
+      setLoading(true);
+      setError('');
+      
+      try {
+        const student = await findStudentByName(studentName.trim());
+        if (student) {
+          onStudentLogin(student);
+        } else {
+          setError('Student not found. Please ask your tutor for access.');
+        }
+      } catch (err) {
+        setError('Login failed. Please checks your internet connection.');
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -52,7 +71,7 @@ export const LoginScreen: React.FC<Props> = ({ onTutorSelect, onStudentLogin }) 
       ) : (
         <div className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-slate-100 p-6 sm:p-8">
           <button 
-            onClick={() => setRole('selection')}
+            onClick={() => { setRole('selection'); setError(''); }}
             className="text-sm text-slate-400 hover:text-slate-600 mb-4 sm:mb-6 flex items-center gap-1 touch-manipulation py-2"
           >
             ← Back
@@ -70,19 +89,35 @@ export const LoginScreen: React.FC<Props> = ({ onTutorSelect, onStudentLogin }) 
                 <input
                   type="text"
                   required
-                  className="w-full pl-10 pr-4 py-3 text-base rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  className={`w-full pl-10 pr-4 py-3 text-base rounded-lg border ${error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-slate-200 focus:ring-blue-500 focus:border-blue-500'} outline-none transition-all`}
                   placeholder="Enter your name"
                   value={studentName}
-                  onChange={(e) => setStudentName(e.target.value)}
+                  onChange={(e) => {
+                      setStudentName(e.target.value);
+                      setError('');
+                  }}
                 />
               </div>
+              {error && (
+                  <div className="flex items-center gap-2 mt-2 text-sm text-red-600">
+                      <AlertCircle size={16} />
+                      <span>{error}</span>
+                  </div>
+              )}
             </div>
             
             <button
               type="submit"
-              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-lg shadow-blue-200 transform active:scale-[0.98] touch-manipulation"
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl transition-all shadow-lg shadow-blue-200 transform active:scale-[0.98] touch-manipulation disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              Enter Dashboard <ChevronRight size={18} />
+              {loading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" /> Checking...
+                  </>
+              ) : (
+                  <>Enter Dashboard <ChevronRight size={18} /></>
+              )}
             </button>
           </form>
         </div>

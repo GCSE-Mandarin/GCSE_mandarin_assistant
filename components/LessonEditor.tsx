@@ -10,12 +10,13 @@ interface Props {
   topic: Topic;
   point: LearningPoint;
   studentName: string;
+  studentId?: string;
   onBack: () => void;
 }
 
 type EditorView = 'material' | 'exercises';
 
-export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName, onBack }) => {
+export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName, studentId, onBack }) => {
   const [view, setView] = useState<EditorView>('material');
   
   // Material State
@@ -128,6 +129,7 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
     const newLesson: AssignedLesson = {
       id: crypto.randomUUID(),
       studentName: studentName,
+      studentId: studentId,
       stageTitle: stage.title,
       topicTitle: topic.title,
       pointDescription: point.description,

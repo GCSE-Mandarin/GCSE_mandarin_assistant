@@ -256,7 +256,7 @@ const calculateRuleBasedScore = (correctAnswer: string, studentAnswer: string): 
 
 export const handler: Handler = async (event, context) => {
   // CORS headers for all responses
-  const corsHeaders = {
+  const corsHeaders: Record<string, string> = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Content-Type': 'application/json',
@@ -270,6 +270,7 @@ export const handler: Handler = async (event, context) => {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Content-Type': 'application/json', // Added to maintain type consistency
       },
       body: '',
     };

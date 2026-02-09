@@ -1,14 +1,14 @@
 
 import React, { useEffect, useState } from 'react';
 import { AssignedLesson } from '../types';
-import { getLessonsForStudent } from '@/lib/services/storage';
+import { getLessonsByStudentId } from '@/lib/services/storage';
 import { BookOpen, CheckCircle, Clock, LogOut, Loader2, RefreshCw, Languages } from 'lucide-react';
 
 interface Props {
   studentName: string;
   onSelectLesson: (lesson: AssignedLesson) => void;
   onLogout: () => void;
-  onPracticeVocab: () => void; // Added prop
+  onPracticeVocab: () => void;
 }
 
 export const StudentDashboard: React.FC<Props> = ({ studentName, onSelectLesson, onLogout, onPracticeVocab }) => {
@@ -17,7 +17,17 @@ export const StudentDashboard: React.FC<Props> = ({ studentName, onSelectLesson,
 
   const loadLessons = async () => {
     setLoading(true);
-    const data = await getLessonsForStudent(studentName);
+    let data: AssignedLesson[] = [];
+    
+    // Try to fetch by ID first if available
+    const studentId = typeof window !== 'undefined' ? localStorage.getItem('currentUserId') : null;
+    
+    if (studentId) {
+      data = await getLessonsByStudentId(studentId);
+    } else {
+      console.warn("No student ID found, cannot fetch lessons");
+    }
+    
     setLessons(data);
     setLoading(false);
   };
