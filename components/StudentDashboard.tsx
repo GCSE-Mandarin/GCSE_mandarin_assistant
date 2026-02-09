@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { AssignedLesson } from '../types';
-import { getLessonsForStudent } from '../services/storage';
+import { getLessonsForStudent } from '@/lib/services/storage';
 import { BookOpen, CheckCircle, Clock, LogOut, Loader2, RefreshCw, Languages } from 'lucide-react';
 
 interface Props {

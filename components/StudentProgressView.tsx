@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { getLessons, getVocabProgress, updateLesson } from '../services/storage';
+import { getLessons, getVocabProgress, updateLesson } from '@/lib/services/storage';
 import { AssignedLesson, VocabProgress } from '../types';
 import { ArrowLeft, User, BookOpen, CheckCircle2, Clock, Calendar, Loader2, Layers, Eye, X, Check, XCircle, Edit2, Save } from 'lucide-react';
 

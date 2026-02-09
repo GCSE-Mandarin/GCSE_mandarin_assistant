@@ -1,6 +1,6 @@
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { AssignedLesson, VocabProgress, VocabList } from '../types';
+import { AssignedLesson, VocabProgress, VocabList } from '@/types';
 
 const LOCAL_STORAGE_KEY = 'mandarin_master_lessons';
 const LOCAL_STORAGE_VOCAB_KEY = 'mandarin_master_vocab';

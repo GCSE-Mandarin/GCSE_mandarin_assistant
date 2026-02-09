@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* --------------------------------------------------
    Base styles
    Tailwind is loaded via CDN in index.html.
@@ -194,14 +198,17 @@ body {
 
 /* Chinese text styling */
 .learning-material-content .chinese-text,
-.learning-material-content :has([\u4e00-\u9fa5]) {
+.learning-material-content :has([\u4e00-\u9fa5]),
+.chinese-text {
+  font-family: var(--font-noto-sans-sc), "Noto Sans SC", sans-serif;
   font-size: 1.5rem; /* Mobile */
   line-height: 2;
 }
 
 @media (min-width: 640px) {
   .learning-material-content .chinese-text,
-  .learning-material-content :has([\u4e00-\u9fa5]) {
+  .learning-material-content :has([\u4e00-\u9fa5]),
+  .chinese-text {
     font-size: 1.75rem; /* Desktop */
   }
 }
@@ -276,4 +283,3 @@ input, textarea, select {
     overscroll-behavior: contain;
   }
 }
-

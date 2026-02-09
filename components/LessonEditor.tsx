@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Stage, Topic, LearningPoint, Exercise, AssignedLesson } from '../types';
-import { generateLearningMaterial, generateExercises } from '../services/geminiService';
-import { saveLesson } from '../services/storage';
+import { generateLearningMaterial, generateExercises } from '@/lib/services/geminiService';
+import { saveLesson } from '@/lib/services/storage';
 import ReactMarkdown from 'react-markdown';
 import { Loader2, Save, ArrowLeft, RefreshCw, PenLine, Plus, Trash2, X, ChevronRight, BookOpen, Dumbbell, Send, Languages, AlertTriangle } from 'lucide-react';
 

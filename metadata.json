@@ -1,7 +1,0 @@
-{
-  "name": "iGCSE Mandarin Master Plan",
-  "description": "An AI-powered IGCSE Mandarin lesson planner for tutors, aligned with Cambridge IGCSE 0547/0548 curriculum progression.",
-  "requestFramePermissions": [
-    "microphone"
-  ]
-}

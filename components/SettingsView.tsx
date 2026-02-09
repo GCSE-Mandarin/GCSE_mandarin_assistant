@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Key, Save, Trash2, AlertTriangle, CheckCircle2, Cloud, Database } from 'lucide-react';
-import { checkApiKeys } from '../services/geminiService';
+import { checkApiKeys } from '@/lib/services/geminiService';
 
 interface Props {
   onBack: () => void;

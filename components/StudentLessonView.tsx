@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { AssignedLesson, Exercise } from '../types';
-import { updateLesson } from '../services/storage';
-import { generateImage, generateSpeech, getChatResponse, evaluateAnswer } from '../services/geminiService';
+import { updateLesson } from '@/lib/services/storage';
+import { generateImage, generateSpeech, getChatResponse, evaluateAnswer } from '@/lib/services/geminiService';
 import ReactMarkdown from 'react-markdown';
 import { ArrowLeft, CheckCircle2, XCircle, AlertCircle, BookOpen, PenTool, ChevronRight, GraduationCap, Home, ChevronLeft, Volume2, Sparkles, MessageCircle, Send, X, Loader2, Check, ArrowRight, Languages, Eye } from 'lucide-react';
 
@@ -212,7 +212,7 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
         const isBullet = /^[-*•]\s/.test(trimmed) || /^\d+\.\s/.test(trimmed);
         // Check if this looks like an example (contains Chinese characters with pinyin pattern)
         const isExample = /[\u4e00-\u9fa5].*\([a-zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]+.*\)/.test(trimmed) || 
-                         /^[*•-]\s.*[\u4e00-\u9fa5]/.test(trimmed) ||
+                         /^[*�?]\s.*[\u4e00-\u9fa5]/.test(trimmed) ||
                          /^Example|^例子|^For example/i.test(trimmed);
         
         // If we hit a new bullet/example and have content, save current chunk

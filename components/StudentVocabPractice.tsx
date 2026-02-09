@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { generateVocabularyList, generateWordDetails, generateSpeech } from '../services/geminiService';
+import { generateVocabularyList, generateWordDetails, generateSpeech } from '@/lib/services/geminiService';
 import { VocabWord, WordDetails, VocabProgress } from '../types';
-import { saveVocabProgress, getVocabProgress, getVocabListByCategory, getVocabLists } from '../services/storage';
+import { saveVocabProgress, getVocabProgress, getVocabListByCategory, getVocabLists } from '@/lib/services/storage';
 import { ArrowLeft, Loader2, Volume2, PenTool, CheckCircle2, X, Mic, RefreshCw, Play, Check } from 'lucide-react';
 
 // Declare HanziWriter types from global script
@@ -1316,7 +1316,7 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
                          )}
                          <p className="text-sm text-slate-600 font-medium">
                              {isRecording ? (
-                                 <span className="text-red-600">‚óè Recording... Click to stop</span>
+                                 <span className="text-red-600">‚ó?Recording... Click to stop</span>
                              ) : (
                                  "Tap the microphone to start recording"
                              )}

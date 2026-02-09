@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Upload, FileText, Trash2, CheckCircle2, X, Loader2 } from 'lucide-react';
 import { VocabList, VocabWord } from '../types';
-import { saveVocabList, getVocabLists, deleteVocabList } from '../services/storage';
+import { saveVocabList, getVocabLists, deleteVocabList } from '@/lib/services/storage';
 
 interface Props {
   onBack: () => void;
