@@ -52,7 +52,7 @@ export const saveLesson = async (lesson: AssignedLesson): Promise<void> => {
     const { error } = await supabase.from('lessons').insert({
       id: lesson.id,
       student_name: lesson.studentName,
-      student_id: lesson.studentId, // Save ID to column
+      student_id: lesson.studentId,
       data: lesson
     });
     if (error) {
@@ -122,10 +122,11 @@ export const updateLesson = async (updatedLesson: AssignedLesson): Promise<void>
 
   if (supabase) {
     // Cloud Update
-    // We update the 'data' json column
     const { error } = await supabase
       .from('lessons')
-      .update({ data: updatedLesson })
+      .update({ 
+        data: updatedLesson
+      })
       .eq('id', updatedLesson.id);
     
     if (error) {
@@ -388,60 +389,5 @@ export const findStudentByName = async (name: string): Promise<Student | null> =
   } catch (e) {
     console.error("Failed to find student", e);
     return null;
-  }
-};
-
-// --- STORAGE & AUDIO ---
-
-export const uploadAudioToStorage = async (fileName: string, audioData: Blob | ArrayBuffer): Promise<string | null> => {
-  const supabase = getSupabase();
-  if (!supabase) return null;
-
-  try {
-    const { data, error } = await supabase.storage
-      .from('ct_tutor')
-      .upload(`audio/${fileName}`, audioData, {
-        contentType: 'audio/mpeg',
-        upsert: true
-      });
-
-    if (error) {
-      console.error("Storage upload error:", error);
-      return null;
-    }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('ct_tutor')
-      .getPublicUrl(`audio/${fileName}`);
-
-    return publicUrl;
-  } catch (e) {
-    console.error("Failed to upload audio", e);
-    return null;
-  }
-};
-
-export const updateLessonAudioUrl = async (lessonId: string, audioUrl: string, lessonData: AssignedLesson): Promise<boolean> => {
-  const supabase = getSupabase();
-  if (!supabase) return false;
-
-  try {
-    // Update both the column and the JSON data field
-    const { error } = await supabase
-      .from('lessons')
-      .update({ 
-        audio_url: audioUrl,
-        data: { ...lessonData, audioUrl: audioUrl }
-      })
-      .eq('id', lessonId);
-
-    if (error) {
-      console.error("Failed to update lesson audio URL:", error);
-      return false;
-    }
-    return true;
-  } catch (e) {
-    console.error("Error in updateLessonAudioUrl", e);
-    return false;
   }
 };

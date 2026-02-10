@@ -1,4 +1,3 @@
-import { Handler } from '@netlify/functions';
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import OpenAI from "openai";
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
@@ -254,53 +253,141 @@ const calculateRuleBasedScore = (correctAnswer: string, studentAnswer: string): 
   }
 };
 
-export const handler: Handler = async (event, context) => {
-  // CORS headers for all responses
+export default async (req: Request, context: any) => {
   const corsHeaders: Record<string, string> = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Content-Type': 'application/json',
   };
 
-  // Handle CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
       headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
+        ...corsHeaders,
         'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Content-Type': 'application/json', // Added to maintain type consistency
       },
-      body: '',
-    };
+    });
   }
 
-  // Only allow POST requests
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
       headers: corsHeaders,
-      body: JSON.stringify({ error: 'Method not allowed' }),
-    };
+    });
   }
 
   try {
-    const body = JSON.parse(event.body || '{}');
+    const body = await req.json().catch(() => ({}));
     const { action, ...params } = body;
-
-    // Get API keys from environment variables (set in Netlify)
     const geminiApiKey = process.env.GEMINI_API_KEY;
     const openaiApiKey = process.env.OPENAI_API_KEY;
 
     if (!geminiApiKey && action !== 'check-keys') {
-      return {
-        statusCode: 500,
+      return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not configured' }), {
+        status: 500,
         headers: corsHeaders,
-        body: JSON.stringify({ error: 'GEMINI_API_KEY not configured' }),
-      };
+      });
     }
 
+    // --- STREAMING ACTION ---
+    if (action === 'streamSpeech') {
+      const { text } = params;
+      // Split text into smaller sentences/phrases for faster response
+      const sentences = text
+        .split(/([。！？\n?.!,;，；])/)
+        .reduce((acc: string[], cur: string, i: number) => {
+          if (i % 2 === 0) acc.push(cur);
+          else acc[acc.length - 1] += cur;
+          return acc;
+        }, [])
+        .map((s: string) => s.trim())
+        // Group small chunks together to avoid robotic staccato (minimum 10 chars)
+        .reduce((acc: string[], cur: string) => {
+          if (acc.length > 0 && acc[acc.length - 1].length < 15) {
+            acc[acc.length - 1] += " " + cur;
+          } else {
+            acc.push(cur);
+          }
+          return acc;
+        }, [])
+        .filter((s: string) => {
+          // Filter out strings that are just emojis/punctuation
+          const hasALphaNum = /[a-zA-Z0-9\u4e00-\u9fa5]/.test(s);
+          return s.length > 0 && hasALphaNum;
+        });
+
+      const ai = new GoogleGenAI({ apiKey: geminiApiKey! });
+
+      try {
+        const startTime = Date.now();
+        console.log(`[TTS Stream] Starting multi-chunk stream. Total parts: ${sentences.length}`);
+
+        const audioStream = new ReadableStream({
+          async start(controller) {
+            try {
+              let chunkCount = 0;
+              
+              for (const sentence of sentences) {
+                const partText = sentence.trim().substring(0, 1000);
+                if (!partText) continue;
+
+                console.log(`[TTS Stream] Requesting part ${++chunkCount}/${sentences.length}: "${partText.substring(0, 20)}..."`);
+                
+                const result = await callWithRetry(async () => {
+                  return await ai.models.generateContentStream({
+                    model: 'gemini-2.5-pro-preview-tts',
+                    contents: [{ role: 'user', parts: [{ text: partText }] }],
+                    config: {
+                      responseModalities: [Modality.AUDIO],
+                      speechConfig: {
+                        voiceConfig: {
+                          prebuiltVoiceConfig: { voiceName: 'Kore' },
+                        },
+                      },
+                    },
+                  });
+                }, 1, 500);
+
+                for await (const chunk of result) {
+                  const audioData = chunk.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+                  if (audioData) {
+                    const bytes = Buffer.from(audioData, 'base64');
+                    controller.enqueue(bytes);
+                  }
+                }
+                
+                // Log progress
+                console.log(`[TTS Stream] Part ${chunkCount} delivered after ${Date.now() - startTime}ms`);
+              }
+              
+              console.log(`[TTS Stream] All ${chunkCount} parts completed. Total: ${Date.now() - startTime}ms`);
+              controller.close();
+            } catch (e: any) {
+              console.error("[TTS Stream Chunk Error]", e);
+              controller.error(e);
+            }
+          }
+        });
+
+        return new Response(audioStream, {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'audio/pcm',
+            'Cache-Control': 'no-cache',
+            'X-Accel-Buffering': 'no',
+          },
+        });
+      } catch (e: any) {
+        console.error("[TTS Stream Initial Error]", e);
+        return new Response(JSON.stringify({ error: e.message }), {
+          status: 500,
+          headers: corsHeaders
+        });
+      }
+    }
+
+    // --- STANDARD ACTIONS ---
     switch (action) {
       case 'generateLearningMaterial': {
         const { stage, topic, point } = params;
@@ -373,11 +460,10 @@ Remember: Make it fun, simple, and full of examples!`;
           return response.text;
         });
 
-        return {
-          statusCode: 200,
+        return new Response(JSON.stringify({ result: result || "## Error\nNo content generated." }), {
+          status: 200,
           headers: corsHeaders,
-          body: JSON.stringify({ result: result || "## Error\nNo content generated." }),
-        };
+        });
       }
 
       case 'generateExercises': {
@@ -405,11 +491,10 @@ Return JSON array with exercises. Each exercise: { "type": "quiz"|"translation",
         const parsed = safeJsonParse(text, { exercises: [] });
         const exercises = parsed.exercises && Array.isArray(parsed.exercises) ? parsed.exercises : (Array.isArray(parsed) ? parsed : []);
 
-        return {
-          statusCode: 200,
+        return new Response(JSON.stringify({ result: exercises }), {
+          status: 200,
           headers: corsHeaders,
-          body: JSON.stringify({ result: exercises }),
-        };
+        });
       }
 
       case 'generateImage': {
@@ -429,19 +514,17 @@ Return JSON array with exercises. Each exercise: { "type": "quiz"|"translation",
         if (result.candidates?.[0]?.content?.parts) {
           for (const part of result.candidates[0].content.parts) {
             if (part.inlineData) {
-              return {
-                statusCode: 200,
+              return new Response(JSON.stringify({ result: `data:image/png;base64,${part.inlineData.data}` }), {
+                status: 200,
                 headers: corsHeaders,
-                body: JSON.stringify({ result: `data:image/png;base64,${part.inlineData.data}` }),
-              };
+              });
             }
           }
         }
-        return {
-          statusCode: 200,
+        return new Response(JSON.stringify({ result: null }), {
+          status: 200,
           headers: corsHeaders,
-          body: JSON.stringify({ result: null }),
-        };
+        });
       }
 
       case 'generateSpeech': {
@@ -449,11 +532,10 @@ Return JSON array with exercises. Each exercise: { "type": "quiz"|"translation",
         const speechText = text.replace(/[*#_]/g, '').substring(0, 500);
         
         if (!speechText.trim()) {
-          return {
-            statusCode: 400,
+          return new Response(JSON.stringify({ error: 'Text to convert is empty' }), {
+            status: 400,
             headers: corsHeaders,
-            body: JSON.stringify({ error: 'Text to convert is empty' }),
-          };
+          });
         }
 
         const trimmedText = speechText.trim();
@@ -472,17 +554,16 @@ Return JSON array with exercises. Each exercise: { "type": "quiz"|"translation",
             // Convert ArrayBuffer to base64 string
             const buffer = Buffer.from(arrayBuffer);
             const base64Audio = buffer.toString('base64');
-            return {
-              statusCode: 200,
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                result: { 
-                  audioData: base64Audio, 
-                  format: 'openai',
-                  mimeType: 'audio/mpeg'
-                } 
-              }),
-            };
+            return new Response(JSON.stringify({ 
+              result: { 
+                audioData: base64Audio, 
+                format: 'openai',
+                mimeType: 'audio/mpeg'
+              } 
+            }), {
+              status: 200,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
           } catch (error) {
             console.log("[TTS] OpenAI TTS failed, falling back to Gemini:", error);
           }
@@ -512,36 +593,32 @@ Return JSON array with exercises. Each exercise: { "type": "quiz"|"translation",
         }, 1);
 
         if (!result.candidates || result.candidates.length === 0) {
-          return {
-            statusCode: 500,
+          return new Response(JSON.stringify({ error: 'No candidates in response' }), {
+            status: 500,
             headers: corsHeaders,
-            body: JSON.stringify({ error: 'No candidates in response' }),
-          };
+          });
         }
-
+        
         const candidate = result.candidates[0];
         if (candidate.finishReason && candidate.finishReason !== 'STOP') {
-          return {
-            statusCode: 500,
+          return new Response(JSON.stringify({ error: `TTS request finished with reason: ${candidate.finishReason}` }), {
+            status: 500,
             headers: corsHeaders,
-            body: JSON.stringify({ error: `TTS request finished with reason: ${candidate.finishReason}` }),
-          };
+          });
         }
 
         const audioData = candidate.content?.parts?.[0]?.inlineData?.data;
         if (!audioData) {
-          return {
-            statusCode: 500,
+          return new Response(JSON.stringify({ error: 'No audio data in response' }), {
+            status: 500,
             headers: corsHeaders,
-            body: JSON.stringify({ error: 'No audio data in response' }),
-          };
+          });
         }
 
-        return {
-          statusCode: 200,
+        return new Response(JSON.stringify({ result: audioData }), {
+          status: 200,
           headers: corsHeaders,
-          body: JSON.stringify({ result: audioData }),
-        };
+        });
       }
 
       case 'generateVocabularyList': {
@@ -565,11 +642,10 @@ Output format: STRICT JSON array. NO markdown. NO trailing commas.`;
         const parsed = safeJsonParse(text, []);
         const vocabList = Array.isArray(parsed) ? parsed : [];
 
-        return {
-          statusCode: 200,
+        return new Response(JSON.stringify({ result: vocabList }), {
+          status: 200,
           headers: corsHeaders,
-          body: JSON.stringify({ result: vocabList }),
-        };
+        });
       }
 
       case 'generateWordDetails': {
@@ -595,11 +671,10 @@ Return JSON: { "character": "${character}", "pinyin": "...", "meaning": "...", "
         let text = response.text || "{}";
         const parsed = safeJsonParse(text, null);
 
-        return {
-          statusCode: 200,
+        return new Response(JSON.stringify({ result: parsed }), {
+          status: 200,
           headers: corsHeaders,
-          body: JSON.stringify({ result: parsed }),
-        };
+        });
       }
 
       case 'getChatResponse': {
@@ -623,22 +698,20 @@ Answer their questions about this material or Mandarin in general. Keep answers 
         });
 
         const result = await chat.sendMessage({ message });
-        return {
-          statusCode: 200,
+        return new Response(JSON.stringify({ result: result.text || "I didn't catch that." }), {
+          status: 200,
           headers: corsHeaders,
-          body: JSON.stringify({ result: result.text || "I didn't catch that." }),
-        };
+        });
       }
 
       case 'evaluateAnswer': {
         const { question, correctAnswer, studentAnswer, questionType } = params;
         
         if (!question || correctAnswer === undefined || studentAnswer === undefined) {
-          return {
-            statusCode: 400,
+          return new Response(JSON.stringify({ error: 'Missing required parameters: question, correctAnswer, studentAnswer' }), {
+            status: 400,
             headers: corsHeaders,
-            body: JSON.stringify({ error: 'Missing required parameters: question, correctAnswer, studentAnswer' }),
-          };
+          });
         }
 
         // For choice questions (quiz type), use binary scoring (100% or 0%)
@@ -753,46 +826,42 @@ Return ONLY the feedback text, no JSON, no quotes, just the feedback message.`;
           }
         }
 
-        return {
-          statusCode: 200,
+        return new Response(JSON.stringify({ 
+          result: { 
+            score: ruleBasedResult.score, 
+            feedback: finalFeedback 
+          } 
+        }), {
+          status: 200,
           headers: corsHeaders,
-          body: JSON.stringify({ 
-            result: { 
-              score: ruleBasedResult.score, 
-              feedback: finalFeedback 
-            } 
-          }),
-        };
+        });
       }
 
       case 'check-keys': {
-        return {
-          statusCode: 200,
+        return new Response(JSON.stringify({ 
+          geminiConfigured: !!geminiApiKey,
+          openaiConfigured: !!openaiApiKey 
+        }), {
+          status: 200,
           headers: corsHeaders,
-          body: JSON.stringify({ 
-            geminiConfigured: !!geminiApiKey,
-            openaiConfigured: !!openaiApiKey 
-          }),
-        };
+        });
       }
 
       default:
-        return {
-          statusCode: 400,
+        return new Response(JSON.stringify({ error: `Unknown action: ${action}` }), {
+          status: 400,
           headers: corsHeaders,
-          body: JSON.stringify({ error: `Unknown action: ${action}` }),
-        };
+        });
     }
   } catch (error: any) {
     console.error('Function error:', error);
-    return {
-      statusCode: 500,
+    return new Response(JSON.stringify({ 
+      error: error?.message || 'Internal server error',
+      details: error?.stack 
+    }), {
+      status: 500,
       headers: corsHeaders,
-      body: JSON.stringify({ 
-        error: error?.message || 'Internal server error',
-        details: error?.stack 
-      }),
-    };
+    });
   }
 };
 
