@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { AssignedLesson, Exercise } from '../types';
 import { updateLesson } from '@/lib/services/storage';
-import { generateImage, generateSpeech, streamSpeech, getChatResponse, evaluateAnswer } from '@/lib/services/geminiService';
+import { generateImage, generateSpeech, getChatResponse, evaluateAnswer } from '@/lib/services/geminiService';
 import ReactMarkdown from 'react-markdown';
 import { ArrowLeft, CheckCircle2, XCircle, AlertCircle, BookOpen, PenTool, ChevronRight, GraduationCap, Home, ChevronLeft, Volume2, Sparkles, MessageCircle, Send, X, Loader2, Check, ArrowRight, Languages, Eye } from 'lucide-react';
 
@@ -39,21 +39,7 @@ async function decodeAudioData(
   if (data.length === 0) {
       return ctx.createBuffer(numChannels, 1, sampleRate);
   }
-  
-  // Create a new buffer if the data isn't aligned or we're using a view
-  // Int16Array requires byteOffset to be a multiple of 2
-  let arrayBuffer = data.buffer;
-  let byteOffset = data.byteOffset;
-  let byteLength = data.byteLength;
-
-  if (byteOffset % 2 !== 0) {
-    const aligned = new Uint8Array(data.byteLength);
-    aligned.set(data);
-    arrayBuffer = aligned.buffer;
-    byteOffset = 0;
-  }
-
-  const dataInt16 = new Int16Array(arrayBuffer, byteOffset, byteLength / 2);
+  const dataInt16 = new Int16Array(data.buffer);
   const frameCount = dataInt16.length / numChannels;
   const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
 
@@ -437,17 +423,6 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
   const playAudio = async (text: string, chineseOnly = false) => {
     if (audioLoading) return;
     
-    // --- MOBILE COMPATIBILITY: SYNC UNLOCK ---
-    // We must try to resume/create context in the same tick as the user click
-    if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    const ctx = audioContextRef.current;
-    if (ctx.state === 'suspended') {
-        ctx.resume(); // Start resuming immediately
-    }
-    // ------------------------------------------
-
     let textToPlay = text;
     if (chineseOnly) {
       // Regex to keep Chinese characters, numbers, and Chinese punctuation
@@ -464,59 +439,36 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
     setAudioLoading(true);
     
     try {
-        // 1. If we have a pre-generated URL, use it (optional: not implemented here as playAudio takes text)
-        // Note: For real-time text, we always want streaming.
+        const speechResult = await generateSpeech(textToPlay);
+        if (!speechResult) throw new Error("No audio returned");
 
+        if (!audioContextRef.current) {
+            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
+        }
+        
+        const ctx = audioContextRef.current;
         if (ctx.state === 'suspended') {
             await ctx.resume();
         }
 
-        let nextStartTime = ctx.currentTime;
-        const sampleRate = 24000;
-        const numChannels = 1;
-        let leftover: Uint8Array | null = null;
+        let audioBytes: Uint8Array;
+        if (typeof speechResult === 'string') {
+          audioBytes = decode(speechResult);
+        } else {
+          audioBytes = new Uint8Array(speechResult.audioData);
+        }
 
-        console.log("[Streaming TTS] Starting stream for text:", textToPlay.substring(0, 30));
+        const audioBuffer = await decodeAudioData(
+            audioBytes,
+            ctx,
+            24000,
+            1
+        );
 
-        await streamSpeech(textToPlay, async (chunkBytes) => {
-            try {
-                let dataToProcess = chunkBytes;
-                
-                // Handle leftover byte from previous chunk
-                if (leftover) {
-                    const combined = new Uint8Array(leftover.length + chunkBytes.length);
-                    combined.set(leftover);
-                    combined.set(chunkBytes, leftover.length);
-                    dataToProcess = combined;
-                    leftover = null;
-                }
-
-                // If chunk length is odd, save the last byte for next chunk
-                if (dataToProcess.length % 2 !== 0) {
-                    leftover = dataToProcess.slice(-1);
-                    dataToProcess = dataToProcess.slice(0, -1);
-                }
-
-                if (dataToProcess.length === 0) return;
-
-                const audioBuffer = await decodeAudioData(
-                    dataToProcess,
-                    ctx,
-                    sampleRate,
-                    numChannels
-                );
-
-                const source = ctx.createBufferSource();
-                source.buffer = audioBuffer;
-                source.connect(ctx.destination);
-
-                const startTime = Math.max(nextStartTime, ctx.currentTime);
-                source.start(startTime);
-                nextStartTime = startTime + audioBuffer.duration;
-            } catch (err) {
-                console.error("[Streaming TTS] Chunk processing failed", err);
-            }
-        });
+        const source = ctx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(ctx.destination);
+        source.start();
 
     } catch (e) {
         console.error("Audio playback failed", e);

@@ -1,5 +1,7 @@
-import React from 'react';
-import { PenTool, BarChart3, ArrowLeft, GraduationCap, Settings, BookOpen } from 'lucide-react';
+import React, { useState } from 'react';
+import { PenTool, BarChart3, ArrowLeft, GraduationCap, Settings, BookOpen, Volume2, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { getLessons, uploadAudioToStorage, updateLessonAudioUrl } from '@/lib/services/storage';
+import { generateSpeech } from '@/lib/services/geminiService';
 
 interface Props {
   onPlanLesson: () => void;
@@ -10,6 +12,23 @@ interface Props {
   onCurriculum: () => void;
 }
 
+// Helper for audio decoding
+function decodeBase64ToUint8Array(base64: string) {
+  const clean = base64.replace(/\s/g, '');
+  try {
+    const binaryString = atob(clean);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  } catch (e) {
+    console.error("Base64 decode failed", e);
+    return new Uint8Array(0);
+  }
+}
+
 export const TutorDashboard: React.FC<Props> = ({
   onPlanLesson,
   onViewProgress,
@@ -18,6 +37,67 @@ export const TutorDashboard: React.FC<Props> = ({
   onManageVocab,
   onCurriculum
 }) => {
+  const [migrating, setMigrating] = useState(false);
+  const [migrationStatus, setMigrationStatus] = useState<{current: number, total: number, error?: string} | null>(null);
+
+  const handleMigrateAudio = async () => {
+    if (!confirm('This will generate audio for ALL lessons that don\'t have it yet. This may consume many API credits. Continue?')) {
+      return;
+    }
+
+    setMigrating(true);
+    setMigrationStatus(null);
+    
+    try {
+      const allLessons = await getLessons();
+      // Filter lessons that don't have audioUrl yet
+      const pendingLessons = allLessons.filter(l => !l.audioUrl);
+      
+      if (pendingLessons.length === 0) {
+        alert('All lessons already have audio URLs!');
+        setMigrating(false);
+        return;
+      }
+
+      setMigrationStatus({ current: 0, total: pendingLessons.length });
+
+      for (let i = 0; i < pendingLessons.length; i++) {
+        const lesson = pendingLessons[i];
+        try {
+          // 1. Generate Speech for the material
+          // We use the whole material text for the lesson-level audio
+          const speechResult = await generateSpeech(lesson.material);
+          
+          if (speechResult) {
+            const audioData = typeof speechResult === 'string' 
+              ? decodeBase64ToUint8Array(speechResult) 
+              : new Uint8Array(speechResult.audioData);
+
+            // 2. Upload to Supabase Storage
+            const fileName = `lesson_${lesson.id}_${Date.now()}.mp3`;
+            const publicUrl = await uploadAudioToStorage(fileName, new Blob([audioData], { type: 'audio/mpeg' }));
+
+            if (publicUrl) {
+              // 3. Update DB
+              await updateLessonAudioUrl(lesson.id, publicUrl, lesson);
+            }
+          }
+        } catch (err) {
+          console.error(`Error migrating lesson ${lesson.id}:`, err);
+        }
+        
+        setMigrationStatus({ current: i + 1, total: pendingLessons.length });
+      }
+
+      alert('Audio migration complete!');
+    } catch (err: any) {
+      console.error("Migration failed:", err);
+      setMigrationStatus(prev => prev ? { ...prev, error: err.message } : null);
+    } finally {
+      setMigrating(false);
+    }
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto relative p-4 sm:p-6 pb-12">
       <button
@@ -110,6 +190,49 @@ export const TutorDashboard: React.FC<Props> = ({
           <div className="mt-4 sm:mt-6 flex items-center text-purple-600 font-semibold text-sm sm:text-base group-hover:translate-x-1 transition-transform">
             View Curriculum →
           </div>
+        </button>
+      </div>
+
+      {/* Temporary Tool Area */}
+      <div className="p-8 bg-slate-100 rounded-3xl border border-slate-200">
+        <div className="flex items-center gap-3 mb-4">
+          <Volume2 className="text-slate-400" />
+          <h3 className="text-lg font-bold text-slate-700">Maintenance Tools</h3>
+        </div>
+        
+        <p className="text-sm text-slate-500 mb-6">
+          Pre-generate audio for all existing lessons to improve student experience. This will upload MP3 files to Supabase Storage.
+        </p>
+
+        {migrationStatus && (
+          <div className="mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium text-slate-600">
+                {migrationStatus.current === migrationStatus.total ? 'Migration Complete' : 'Processing Lessons...'}
+              </span>
+              <span className="text-sm font-bold text-brand-600">{migrationStatus.current} / {migrationStatus.total}</span>
+            </div>
+            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+              <div 
+                className="bg-brand-500 h-full transition-all duration-300" 
+                style={{ width: `${(migrationStatus.current / migrationStatus.total) * 100}%` }}
+              ></div>
+            </div>
+            {migrationStatus.error && (
+              <div className="mt-3 flex items-center gap-2 text-red-600 text-xs">
+                <AlertCircle size={14} /> <span>Error: {migrationStatus.error}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        <button
+          onClick={handleMigrateAudio}
+          disabled={migrating}
+          className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-md active:scale-[0.98] disabled:opacity-50"
+        >
+          {migrating ? <Loader2 className="animate-spin" size={20} /> : <Volume2 size={20} />}
+          {migrating ? 'Generating Audio...' : 'Generate All Lesson Audio'}
         </button>
       </div>
     </div>

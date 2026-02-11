@@ -99,47 +99,6 @@ export const generateSpeech = async (text: string): Promise<string | { audioData
   }
 };
 
-/**
- * Real-time Streaming TTS
- * @param text The text to read
- * @param onChunk Callback that receives each raw PCM audio chunk
- */
-export const streamSpeech = async (
-  text: string, 
-  onChunk: (chunk: Uint8Array) => void
-): Promise<void> => {
-  try {
-    const response = await fetch('/.netlify/functions/generate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ action: 'streamSpeech', text }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Streaming request failed: ${response.status}`);
-    }
-
-    if (!response.body) {
-      throw new Error('No readable stream in response body');
-    }
-
-    const reader = response.body.getReader();
-    
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (value) {
-        onChunk(value);
-      }
-    }
-  } catch (error: any) {
-    console.error("[TTS Stream] Service Error:", error);
-    throw error;
-  }
-};
-
 export const getChatResponse = async (
   message: string, 
   contextMaterial: string,

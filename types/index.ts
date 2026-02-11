@@ -49,6 +49,7 @@ export interface AssignedLesson {
   tutorAdjustedScores?: number[]; // Tutor-adjusted scores (0-100) for each exercise
   tutorComments?: string[]; // Tutor comments for each exercise
   tutorOverallComment?: string; // Overall comment from tutor for the entire lesson
+  audioUrl?: string; // New field for lesson audio
 }
 
 export type ViewState = 
