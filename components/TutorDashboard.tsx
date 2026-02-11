@@ -12,6 +12,36 @@ interface Props {
   onCurriculum: () => void;
 }
 
+// Helper to add WAV header to raw PCM data
+function addWavHeader(pcmData: Uint8Array, sampleRate: number = 24000) {
+  const header = new ArrayBuffer(44);
+  const view = new DataView(header);
+
+  // RIFF identifier
+  view.setUint32(0, 0x52494646, false); // "RIFF"
+  view.setUint32(4, 36 + pcmData.length, true);
+  view.setUint32(8, 0x57415645, false); // "WAVE"
+
+  // "fmt " chunk
+  view.setUint32(12, 0x666d7420, false); // "fmt "
+  view.setUint32(16, 16, true); // chunk size
+  view.setUint16(20, 1, true); // PCM format
+  view.setUint16(22, 1, true); // Mono
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true); // byte rate (sampleRate * blockAlign)
+  view.setUint16(32, 2, true); // block align
+  view.setUint16(34, 16, true); // bits per sample
+
+  // "data" chunk
+  view.setUint32(36, 0x64617461, false); // "data"
+  view.setUint32(40, pcmData.length, true);
+
+  const combined = new Uint8Array(header.byteLength + pcmData.length);
+  combined.set(new Uint8Array(header), 0);
+  combined.set(pcmData, header.byteLength);
+  return combined;
+}
+
 // Helper for audio decoding
 function decodeBase64ToUint8Array(base64: string) {
   const clean = base64.replace(/\s/g, '');
@@ -38,61 +68,81 @@ export const TutorDashboard: React.FC<Props> = ({
   onCurriculum
 }) => {
   const [migrating, setMigrating] = useState(false);
-  const [migrationStatus, setMigrationStatus] = useState<{current: number, total: number, error?: string} | null>(null);
+  const [migrationStatus, setMigrationStatus] = useState<{
+    current: number, 
+    total: number, 
+    success: number, 
+    failed: number,
+    error?: string
+  } | null>(null);
 
   const handleMigrateAudio = async () => {
-    if (!confirm('This will generate audio for ALL lessons that don\'t have it yet. This may consume many API credits. Continue?')) {
+    const allLessons = await getLessons();
+    const pendingLessons = allLessons.filter(l => !l.audioUrl);
+    
+    if (pendingLessons.length === 0) {
+      alert('All lessons already have audio URLs!');
+      return;
+    }
+
+    if (!confirm(`Found ${pendingLessons.length} lessons without audio. Start generating now?`)) {
       return;
     }
 
     setMigrating(true);
-    setMigrationStatus(null);
+    setMigrationStatus({ current: 0, total: pendingLessons.length, success: 0, failed: 0 });
     
     try {
-      const allLessons = await getLessons();
-      // Filter lessons that don't have audioUrl yet
-      const pendingLessons = allLessons.filter(l => !l.audioUrl);
-      
-      if (pendingLessons.length === 0) {
-        alert('All lessons already have audio URLs!');
-        setMigrating(false);
-        return;
-      }
-
-      setMigrationStatus({ current: 0, total: pendingLessons.length });
-
       for (let i = 0; i < pendingLessons.length; i++) {
         const lesson = pendingLessons[i];
+        let step = 'AI Speech Generation';
+        
         try {
-          // 1. Generate Speech for the material
-          // We use the whole material text for the lesson-level audio
+          // 1. Generate Speech
           const speechResult = await generateSpeech(lesson.material);
+          if (!speechResult) throw new Error("AI returned no audio data");
+
+          // 2. Process Data
+          step = 'Audio Decoding';
+          const audioData = typeof speechResult === 'string' 
+            ? decodeBase64ToUint8Array(speechResult) 
+            : new Uint8Array(speechResult.audioData);
+
+          // 3. Upload to Storage
+          step = 'Storage Upload';
+          // Gemini returns raw PCM, OpenAI might return MP3. 
+          // We wrap PCM with WAV header. OpenAI format already has header.
+          const finalAudioData = typeof speechResult === 'string' 
+            ? addWavHeader(audioData) 
+            : audioData; 
+            
+          const fileName = `lesson_${lesson.id}_${Date.now()}.wav`;
+          const publicUrl = await uploadAudioToStorage(fileName, new Blob([finalAudioData], { type: 'audio/wav' }));
+          if (!publicUrl) throw new Error("Failed to upload to storage");
+
+          // 4. Update Database (Immediate)
+          step = 'Database Update';
+          const success = await updateLessonAudioUrl(lesson.id, publicUrl, lesson);
           
-          if (speechResult) {
-            const audioData = typeof speechResult === 'string' 
-              ? decodeBase64ToUint8Array(speechResult) 
-              : new Uint8Array(speechResult.audioData);
-
-            // 2. Upload to Supabase Storage
-            const fileName = `lesson_${lesson.id}_${Date.now()}.mp3`;
-            const publicUrl = await uploadAudioToStorage(fileName, new Blob([audioData], { type: 'audio/mpeg' }));
-
-            if (publicUrl) {
-              // 3. Update DB
-              await updateLessonAudioUrl(lesson.id, publicUrl, lesson);
-            }
+          if (success) {
+            setMigrationStatus(prev => prev ? { ...prev, success: prev.success + 1 } : null);
+          } else {
+            throw new Error("DB Update failed");
           }
-        } catch (err) {
-          console.error(`Error migrating lesson ${lesson.id}:`, err);
+        } catch (err: any) {
+          console.error(`[Migration Error] Lesson ${lesson.id} failed at step "${step}":`, err);
+          setMigrationStatus(prev => prev ? { 
+            ...prev, 
+            failed: prev.failed + 1,
+            error: `Failed at "${step}": ${err.message}` 
+          } : null);
         }
         
-        setMigrationStatus({ current: i + 1, total: pendingLessons.length });
+        setMigrationStatus(prev => prev ? { ...prev, current: i + 1 } : null);
       }
-
-      alert('Audio migration complete!');
     } catch (err: any) {
-      console.error("Migration failed:", err);
-      setMigrationStatus(prev => prev ? { ...prev, error: err.message } : null);
+      console.error("Critical migration failure:", err);
+      setMigrationStatus(prev => prev ? { ...prev, error: `Critical: ${err.message}` } : null);
     } finally {
       setMigrating(false);
     }
@@ -210,7 +260,11 @@ export const TutorDashboard: React.FC<Props> = ({
               <span className="text-sm font-medium text-slate-600">
                 {migrationStatus.current === migrationStatus.total ? 'Migration Complete' : 'Processing Lessons...'}
               </span>
-              <span className="text-sm font-bold text-brand-600">{migrationStatus.current} / {migrationStatus.total}</span>
+              <div className="flex gap-3 text-xs">
+                <span className="text-green-600 font-bold">{migrationStatus.success} Success</span>
+                <span className="text-red-500 font-bold">{migrationStatus.failed} Failed</span>
+                <span className="text-slate-400">Total: {migrationStatus.total}</span>
+              </div>
             </div>
             <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
               <div 
@@ -219,8 +273,9 @@ export const TutorDashboard: React.FC<Props> = ({
               ></div>
             </div>
             {migrationStatus.error && (
-              <div className="mt-3 flex items-center gap-2 text-red-600 text-xs">
-                <AlertCircle size={14} /> <span>Error: {migrationStatus.error}</span>
+              <div className="mt-3 p-2 bg-red-50 rounded border border-red-100 flex items-start gap-2 text-red-600 text-[10px] leading-relaxed">
+                <AlertCircle size={12} className="shrink-0 mt-0.5" /> 
+                <span className="break-all">{migrationStatus.error}</span>
               </div>
             )}
           </div>

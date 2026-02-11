@@ -75,14 +75,17 @@ export const getLessons = async (): Promise<AssignedLesson[]> => {
     // Cloud Fetch
     const { data, error } = await supabase
       .from('lessons')
-      .select('data')
+      .select('data, audio_url')
       .order('created_at', { ascending: false });
     
     if (error) {
       console.error("Supabase Fetch Error:", error);
       return [];
     }
-    return data.map((row: any) => row.data as AssignedLesson);
+    return data.map((row: any) => ({
+      ...(row.data as AssignedLesson),
+      audioUrl: row.audio_url || undefined
+    }));
   } else {
     // Local Fetch
     return safeLocalParse<AssignedLesson[]>(LOCAL_STORAGE_KEY, []);
@@ -97,7 +100,7 @@ export const getLessonsByStudentId = async (studentId: string): Promise<Assigned
     try {
       const { data, error } = await supabase
         .from('lessons')
-        .select('data')
+        .select('data, audio_url')
         .eq('student_id', studentId)
         .order('created_at', { ascending: false });
       
@@ -105,7 +108,10 @@ export const getLessonsByStudentId = async (studentId: string): Promise<Assigned
         console.error("Supabase Fetch Error:", error);
         return [];
       }
-      return data.map((row: any) => row.data as AssignedLesson);
+      return data.map((row: any) => ({
+        ...(row.data as AssignedLesson),
+        audioUrl: row.audio_url || undefined
+      }));
     } catch (e) {
       console.error("Failed to fetch lessons by ID", e);
       return [];
