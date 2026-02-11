@@ -423,57 +423,94 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
   const playAudio = async (text: string, chineseOnly = false) => {
     if (audioLoading) return;
     
-    let textToPlay = text;
-    if (chineseOnly) {
-      // Regex to keep Chinese characters, numbers, and Chinese punctuation
-      const matches = text.match(/[\u4e00-\u9fa50-9\u3000-\u303f\uff00-\uffef]+/g);
-      if (matches) {
-        textToPlay = matches.join(' ');
-      }
-    }
-
-    if (!textToPlay.trim()) {
-        return;
-    }
-
     setAudioLoading(true);
     
     try {
-        const speechResult = await generateSpeech(textToPlay);
-        if (!speechResult) throw new Error("No audio returned");
-
+      // Priority 1: Use pre-generated lesson audio if available
+      if (lesson.audioUrl) {
+        console.log('[Audio] Playing pre-generated audio from:', lesson.audioUrl);
+        
         if (!audioContextRef.current) {
-            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
+          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
         }
         
         const ctx = audioContextRef.current;
         if (ctx.state === 'suspended') {
-            await ctx.resume();
+          await ctx.resume();
         }
 
-        let audioBytes: Uint8Array;
-        if (typeof speechResult === 'string') {
-          audioBytes = decode(speechResult);
-        } else {
-          audioBytes = new Uint8Array(speechResult.audioData);
-        }
-
-        const audioBuffer = await decodeAudioData(
-            audioBytes,
-            ctx,
-            24000,
-            1
-        );
+        // Fetch and decode the audio file
+        const response = await fetch(lesson.audioUrl);
+        const arrayBuffer = await response.arrayBuffer();
+        const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
 
         const source = ctx.createBufferSource();
         source.buffer = audioBuffer;
         source.connect(ctx.destination);
         source.start();
+        
+        return;
+      }
 
-    } catch (e) {
-        console.error("Audio playback failed", e);
+      // Fallback: Generate audio in real-time if no pre-generated audio
+      console.log('[Audio] No pre-generated audio found, generating in real-time...');
+      
+      let textToPlay = text;
+      if (chineseOnly) {
+        const matches = text.match(/[\u4e00-\u9fa50-9\u3000-\u303f\uff00-\uffef]+/g);
+        if (matches) {
+          textToPlay = matches.join(' ');
+        }
+      }
+
+      if (!textToPlay.trim()) {
+        return;
+      }
+
+      const speechResult = await generateSpeech(textToPlay);
+      if (!speechResult) throw new Error("No audio returned");
+
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
+      }
+      
+      const ctx = audioContextRef.current;
+      if (ctx.state === 'suspended') {
+        await ctx.resume();
+      }
+
+      let audioBytes: Uint8Array;
+      if (typeof speechResult === 'string') {
+        audioBytes = decode(speechResult);
+      } else {
+        audioBytes = new Uint8Array(speechResult.audioData);
+      }
+
+      const audioBuffer = await decodeAudioData(
+        audioBytes,
+        ctx,
+        24000,
+        1
+      );
+
+      const source = ctx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(ctx.destination);
+      source.start();
+
+    } catch (e: any) {
+      console.error("Audio playback failed", e);
+      
+      // Show user-friendly error message
+      if (e.message?.includes('504') || e.message?.includes('timeout') || e.message?.includes('timed out')) {
+        alert('⏱️ Audio generation is taking too long.\n\nThis lesson may not have pre-generated audio yet. Please contact your tutor to request audio for this lesson.');
+      } else if (e.message?.includes('fetch')) {
+        alert('🔊 Audio file not found.\n\nThis lesson may not have audio available yet. Please try again later or contact your tutor.');
+      } else {
+        alert('❌ Unable to play audio.\n\nPlease check your internet connection and try again.');
+      }
     } finally {
-        setAudioLoading(false);
+      setAudioLoading(false);
     }
   };
 
