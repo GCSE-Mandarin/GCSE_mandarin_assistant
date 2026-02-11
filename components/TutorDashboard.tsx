@@ -243,9 +243,7 @@ export const TutorDashboard: React.FC<Props> = ({
         </button>
       </div>
 
-
-      {/* Temporary Tool Area - HIDDEN */}
-      {/* 
+      {/* Temporary Tool Area */}
       <div className="p-8 bg-slate-100 rounded-3xl border border-slate-200">
         <div className="flex items-center gap-3 mb-4">
           <Volume2 className="text-slate-400" />
@@ -292,7 +290,6 @@ export const TutorDashboard: React.FC<Props> = ({
           {migrating ? 'Generating Audio...' : 'Generate All Lesson Audio'}
         </button>
       </div>
-      */}
     </div>
   );
 };
