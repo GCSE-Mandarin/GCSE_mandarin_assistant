@@ -52,89 +52,7 @@ async function decodeAudioData(
   return buffer;
 }
 
-interface ChatOverlayProps {
-  isOpen: boolean;
-  setIsOpen: (v: boolean) => void;
-  history: { role: 'user' | 'model', text: string }[];
-  input: string;
-  setInput: (v: string) => void;
-  onSend: (e: React.FormEvent) => void;
-  loading: boolean;
-}
-
-const ChatOverlay: React.FC<ChatOverlayProps> = ({
-  isOpen,
-  setIsOpen,
-  history,
-  input,
-  setInput,
-  onSend,
-  loading
-}) => {
-  const chatEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [history, isOpen]);
-
-  return (
-    <div className={`fixed bottom-24 right-6 z-30 flex flex-col items-end transition-all ${isOpen ? 'w-80 sm:w-96' : 'w-auto'}`}>
-        {isOpen && (
-            <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full mb-4 overflow-hidden flex flex-col h-[400px] animate-in slide-in-from-bottom-10 fade-in duration-300">
-                <div className="bg-blue-600 p-4 flex justify-between items-center text-white">
-                    <h3 className="font-bold flex items-center gap-2"><MessageCircle size={18} /> Tutor Chat</h3>
-                    <button onClick={() => setIsOpen(false)} className="hover:bg-blue-700 p-1 rounded"><X size={18}/></button>
-                </div>
-                <div className="flex-1 overflow-y-auto p-4 bg-slate-50 space-y-3 custom-scrollbar">
-                    {history.length === 0 && (
-                        <div className="text-center text-slate-400 text-sm mt-10">
-                            <p>Hi! I'm your AI Tutor.</p>
-                            <p>Ask me anything!</p>
-                        </div>
-                    )}
-                    {history.map((msg, i) => (
-                        <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[85%] p-3 rounded-xl text-sm ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white border border-slate-200 text-slate-700 rounded-bl-none shadow-sm'}`}>
-                                {msg.text}
-                            </div>
-                        </div>
-                    ))}
-                    {loading && (
-                        <div className="flex justify-start">
-                            <div className="bg-white border border-slate-200 p-3 rounded-xl rounded-bl-none shadow-sm">
-                                <div className="flex gap-1">
-                                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
-                                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce delay-75"></div>
-                                    <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce delay-150"></div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                    <div ref={chatEndRef} />
-                </div>
-                <form onSubmit={onSend} className="p-3 bg-white border-t border-slate-200 flex gap-2">
-                    <input 
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        placeholder="Ask a question..."
-                        className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                    />
-                    <button type="submit" disabled={!input.trim() || loading} className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                        <Send size={18} />
-                    </button>
-                </form>
-            </div>
-        )}
-        <button 
-            onClick={() => setIsOpen(!isOpen)}
-            className={`flex items-center gap-2 px-4 py-3 rounded-full font-bold shadow-lg transition-all transform hover:scale-105 active:scale-95 ${isOpen ? 'bg-slate-700 text-white' : 'bg-blue-600 text-white'}`}
-        >
-            {isOpen ? 'Close Chat' : <><MessageCircle size={20} /> Ask Tutor</>}
-        </button>
-    </div>
-  );
-};
-
+// StudentLessonView
 export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
   const [view, setView] = useState<InternalView>('menu');
   
@@ -173,11 +91,7 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
   const [audioLoading, setAudioLoading] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  // Chat State
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatInput, setChatInput] = useState('');
-  const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model', text: string }[]>([]);
-  const [chatLoading, setChatLoading] = useState(false);
+  // Audio State
 
   // Parse material into sections - split into smaller chunks (one point or example per page)
   const sections = useMemo(() => {
@@ -475,38 +389,6 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
     } finally {
         setAudioLoading(false);
     }
-  };
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!chatInput.trim()) return;
-
-    const userMsg = chatInput;
-    setChatInput('');
-    setChatHistory(prev => [...prev, { role: 'user', text: userMsg }]);
-    setChatLoading(true);
-
-    // Build context based on view
-    let context = lesson.material;
-    if (view === 'practice' && !submitted) {
-        const currentEx = lesson.exercises[practiceIndex];
-        context = `
-        Current Exercise Context:
-        Type: ${currentEx.type}
-        Question: ${currentEx.question}
-        Options: ${currentEx.options?.join(', ')}
-        Correct Answer: ${currentEx.answer}
-        Student's Current Answer: ${answers[practiceIndex]}
-        
-        Lesson Material for reference:
-        ${lesson.material}
-        `;
-    }
-
-    const reply = await getChatResponse(userMsg, context, chatHistory);
-    
-    setChatHistory(prev => [...prev, { role: 'model', text: reply }]);
-    setChatLoading(false);
   };
 
   // --- MENU VIEW ---
@@ -987,15 +869,6 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
           </div>
         </main>
 
-        <ChatOverlay
-          isOpen={chatOpen}
-          setIsOpen={setChatOpen}
-          history={chatHistory}
-          input={chatInput}
-          setInput={setChatInput}
-          onSend={handleSendMessage}
-          loading={chatLoading}
-        />
       </div>
     );
   }

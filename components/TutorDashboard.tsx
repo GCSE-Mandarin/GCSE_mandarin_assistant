@@ -242,54 +242,6 @@ export const TutorDashboard: React.FC<Props> = ({
           </div>
         </button>
       </div>
-
-      {/* Temporary Tool Area */}
-      <div className="p-8 bg-slate-100 rounded-3xl border border-slate-200">
-        <div className="flex items-center gap-3 mb-4">
-          <Volume2 className="text-slate-400" />
-          <h3 className="text-lg font-bold text-slate-700">Maintenance Tools</h3>
-        </div>
-        
-        <p className="text-sm text-slate-500 mb-6">
-          Pre-generate audio for all existing lessons to improve student experience. This will upload MP3 files to Supabase Storage.
-        </p>
-
-        {migrationStatus && (
-          <div className="mb-6 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-slate-600">
-                {migrationStatus.current === migrationStatus.total ? 'Migration Complete' : 'Processing Lessons...'}
-              </span>
-              <div className="flex gap-3 text-xs">
-                <span className="text-green-600 font-bold">{migrationStatus.success} Success</span>
-                <span className="text-red-500 font-bold">{migrationStatus.failed} Failed</span>
-                <span className="text-slate-400">Total: {migrationStatus.total}</span>
-              </div>
-            </div>
-            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-              <div 
-                className="bg-brand-500 h-full transition-all duration-300" 
-                style={{ width: `${(migrationStatus.current / migrationStatus.total) * 100}%` }}
-              ></div>
-            </div>
-            {migrationStatus.error && (
-              <div className="mt-3 p-2 bg-red-50 rounded border border-red-100 flex items-start gap-2 text-red-600 text-[10px] leading-relaxed">
-                <AlertCircle size={12} className="shrink-0 mt-0.5" /> 
-                <span className="break-all">{migrationStatus.error}</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        <button
-          onClick={handleMigrateAudio}
-          disabled={migrating}
-          className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-8 rounded-xl transition-all shadow-md active:scale-[0.98] disabled:opacity-50"
-        >
-          {migrating ? <Loader2 className="animate-spin" size={20} /> : <Volume2 size={20} />}
-          {migrating ? 'Generating Audio...' : 'Generate All Lesson Audio'}
-        </button>
-      </div>
     </div>
   );
 };
