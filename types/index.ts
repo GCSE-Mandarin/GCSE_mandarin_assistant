@@ -49,7 +49,6 @@ export interface AssignedLesson {
   tutorAdjustedScores?: number[]; // Tutor-adjusted scores (0-100) for each exercise
   tutorComments?: string[]; // Tutor comments for each exercise
   tutorOverallComment?: string; // Overall comment from tutor for the entire lesson
-  audioUrl?: string; // New field for lesson audio
 }
 
 export type ViewState = 
@@ -83,7 +82,8 @@ export interface WordDetails extends VocabWord {
 }
 
 export interface VocabProgress {
-  id: string; // studentName_character
+  id: string; // studentId_character
+  studentId: string;
   studentName: string;
   category: string;
   word: string; // character

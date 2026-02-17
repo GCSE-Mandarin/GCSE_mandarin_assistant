@@ -75,17 +75,14 @@ export const getLessons = async (): Promise<AssignedLesson[]> => {
     // Cloud Fetch
     const { data, error } = await supabase
       .from('lessons')
-      .select('data, audio_url')
+      .select('data')
       .order('created_at', { ascending: false });
     
     if (error) {
       console.error("Supabase Fetch Error:", error);
       return [];
     }
-    return data.map((row: any) => ({
-      ...(row.data as AssignedLesson),
-      audioUrl: row.audio_url || undefined
-    }));
+    return data.map((row: any) => row.data as AssignedLesson);
   } else {
     // Local Fetch
     return safeLocalParse<AssignedLesson[]>(LOCAL_STORAGE_KEY, []);
@@ -100,7 +97,7 @@ export const getLessonsByStudentId = async (studentId: string): Promise<Assigned
     try {
       const { data, error } = await supabase
         .from('lessons')
-        .select('data, audio_url')
+        .select('data')
         .eq('student_id', studentId)
         .order('created_at', { ascending: false });
       
@@ -108,10 +105,7 @@ export const getLessonsByStudentId = async (studentId: string): Promise<Assigned
         console.error("Supabase Fetch Error:", error);
         return [];
       }
-      return data.map((row: any) => ({
-        ...(row.data as AssignedLesson),
-        audioUrl: row.audio_url || undefined
-      }));
+      return data.map((row: any) => row.data as AssignedLesson);
     } catch (e) {
       console.error("Failed to fetch lessons by ID", e);
       return [];
@@ -150,7 +144,7 @@ export const updateLesson = async (updatedLesson: AssignedLesson): Promise<void>
 
 // --- VOCABULARY PROGRESS ---
 
-export const getVocabProgress = async (studentName?: string): Promise<VocabProgress[]> => {
+export const getVocabProgress = async (studentId?: string): Promise<VocabProgress[]> => {
   const supabase = getSupabase();
   let allProgress: VocabProgress[] = [];
 
@@ -173,8 +167,8 @@ export const getVocabProgress = async (studentName?: string): Promise<VocabProgr
     allProgress = safeLocalParse<VocabProgress[]>(LOCAL_STORAGE_VOCAB_KEY, []);
   }
 
-  if (studentName) {
-    return allProgress.filter(p => p.studentName.toLowerCase() === studentName.toLowerCase());
+  if (studentId) {
+    return allProgress.filter(p => p.studentId === studentId);
   }
   return allProgress;
 };
@@ -397,57 +391,3 @@ export const findStudentByName = async (name: string): Promise<Student | null> =
   }
 };
 
-// --- STORAGE & AUDIO ---
-
-export const uploadAudioToStorage = async (fileName: string, audioData: Blob | ArrayBuffer): Promise<string | null> => {
-  const supabase = getSupabase();
-  if (!supabase) return null;
-
-  try {
-    const { data, error } = await supabase.storage
-      .from('ct_tutor')
-      .upload(`audio/${fileName}`, audioData, {
-        contentType: 'audio/mpeg',
-        upsert: true
-      });
-
-    if (error) {
-      console.error("Storage upload error:", error);
-      return null;
-    }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('ct_tutor')
-      .getPublicUrl(`audio/${fileName}`);
-
-    return publicUrl;
-  } catch (e) {
-    console.error("Failed to upload audio", e);
-    return null;
-  }
-};
-
-export const updateLessonAudioUrl = async (lessonId: string, audioUrl: string, lessonData: AssignedLesson): Promise<boolean> => {
-  const supabase = getSupabase();
-  if (!supabase) return false;
-
-  try {
-    // Update both the column and the JSON data field
-    const { error } = await supabase
-      .from('lessons')
-      .update({ 
-        audio_url: audioUrl,
-        data: { ...lessonData, audioUrl: audioUrl }
-      })
-      .eq('id', lessonId);
-
-    if (error) {
-      console.error("Failed to update lesson audio URL:", error);
-      return false;
-    }
-    return true;
-  } catch (e) {
-    console.error("Error in updateLessonAudioUrl", e);
-    return false;
-  }
-};

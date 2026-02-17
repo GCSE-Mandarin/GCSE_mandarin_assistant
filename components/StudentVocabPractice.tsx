@@ -1,14 +1,15 @@
 ﻿
 import React, { useState, useEffect, useRef } from 'react';
 import { generateVocabularyList, generateWordDetails, generateSpeech } from '@/lib/services/geminiService';
-import { VocabWord, WordDetails, VocabProgress } from '../types';
-import { saveVocabProgress, getVocabProgress, getVocabListByCategory, getVocabLists } from '@/lib/services/storage';
+import { VocabWord, WordDetails, VocabProgress, VocabList } from '../types';
+import { saveVocabProgress, getVocabProgress, getVocabListByCategory, getVocabLists, saveVocabList } from '@/lib/services/storage';
 import { ArrowLeft, Loader2, Volume2, PenTool, CheckCircle2, X, Mic, RefreshCw, Play, Check } from 'lucide-react';
 
 // Declare HanziWriter types from global script
 declare const HanziWriter: any;
 
 interface Props {
+  studentId: string;
   studentName: string;
   onBack: () => void;
 }
@@ -63,7 +64,7 @@ async function decodeAudioData(
   return buffer;
 }
 
-export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) => {
+export const StudentVocabPractice: React.FC<Props> = ({ studentId, studentName, onBack }) => {
   const [view, setView] = useState<'categories' | 'list' | 'flashcard'>('categories');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [availableCategories, setAvailableCategories] = useState<string[]>(CATEGORIES);
@@ -122,7 +123,7 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
 
   // Load progress when entering list view
   const loadProgress = async () => {
-    const allProgress = await getVocabProgress(studentName);
+    const allProgress = await getVocabProgress(studentId);
     const map: Record<string, VocabProgress> = {};
     allProgress.forEach(p => {
         if (p.category === selectedCategory) {
@@ -142,9 +143,10 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
     if (!selectedCategory) return;
     
     try {
-    const id = `${studentName}_${word}`;
+    const id = `${studentId}_${word}`;
     const existing = progressMap[word] || {
         id,
+        studentId,
         studentName,
         category: selectedCategory,
         word,
@@ -213,7 +215,20 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentName, onBack }) =
               }
             });
           });
-          setCharacterList(Array.from(allChars));
+          const finalChars = Array.from(allChars);
+          setCharacterList(finalChars);
+
+          // Auto-save generated list to database so it stays consistent for all students
+          const vocabList: VocabList = {
+            id: crypto.randomUUID(),
+            category: category,
+            characters: finalChars,
+            uploadedAt: new Date().toISOString(),
+            fileName: 'AI Generated'
+          };
+          
+          // Silently save in background
+          saveVocabList(vocabList).catch(err => console.warn("Failed to auto-save AI vocab list:", err));
         }
       }
     } catch (error: any) {

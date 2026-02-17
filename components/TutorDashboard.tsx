@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { PenTool, BarChart3, ArrowLeft, GraduationCap, Settings, BookOpen, Volume2, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
-import { getLessons, uploadAudioToStorage, updateLessonAudioUrl } from '@/lib/services/storage';
-import { generateSpeech } from '@/lib/services/geminiService';
 
 interface Props {
   onPlanLesson: () => void;
@@ -67,87 +65,6 @@ export const TutorDashboard: React.FC<Props> = ({
   onManageVocab,
   onCurriculum
 }) => {
-  const [migrating, setMigrating] = useState(false);
-  const [migrationStatus, setMigrationStatus] = useState<{
-    current: number, 
-    total: number, 
-    success: number, 
-    failed: number,
-    error?: string
-  } | null>(null);
-
-  const handleMigrateAudio = async () => {
-    const allLessons = await getLessons();
-    const pendingLessons = allLessons.filter(l => !l.audioUrl);
-    
-    if (pendingLessons.length === 0) {
-      alert('All lessons already have audio URLs!');
-      return;
-    }
-
-    if (!confirm(`Found ${pendingLessons.length} lessons without audio. Start generating now?`)) {
-      return;
-    }
-
-    setMigrating(true);
-    setMigrationStatus({ current: 0, total: pendingLessons.length, success: 0, failed: 0 });
-    
-    try {
-      for (let i = 0; i < pendingLessons.length; i++) {
-        const lesson = pendingLessons[i];
-        let step = 'AI Speech Generation';
-        
-        try {
-          // 1. Generate Speech
-          const speechResult = await generateSpeech(lesson.material);
-          if (!speechResult) throw new Error("AI returned no audio data");
-
-          // 2. Process Data
-          step = 'Audio Decoding';
-          const audioData = typeof speechResult === 'string' 
-            ? decodeBase64ToUint8Array(speechResult) 
-            : new Uint8Array(speechResult.audioData);
-
-          // 3. Upload to Storage
-          step = 'Storage Upload';
-          // Gemini returns raw PCM, OpenAI might return MP3. 
-          // We wrap PCM with WAV header. OpenAI format already has header.
-          const finalAudioData = typeof speechResult === 'string' 
-            ? addWavHeader(audioData) 
-            : audioData; 
-            
-          const fileName = `lesson_${lesson.id}_${Date.now()}.wav`;
-          const publicUrl = await uploadAudioToStorage(fileName, new Blob([finalAudioData], { type: 'audio/wav' }));
-          if (!publicUrl) throw new Error("Failed to upload to storage");
-
-          // 4. Update Database (Immediate)
-          step = 'Database Update';
-          const success = await updateLessonAudioUrl(lesson.id, publicUrl, lesson);
-          
-          if (success) {
-            setMigrationStatus(prev => prev ? { ...prev, success: prev.success + 1 } : null);
-          } else {
-            throw new Error("DB Update failed");
-          }
-        } catch (err: any) {
-          console.error(`[Migration Error] Lesson ${lesson.id} failed at step "${step}":`, err);
-          setMigrationStatus(prev => prev ? { 
-            ...prev, 
-            failed: prev.failed + 1,
-            error: `Failed at "${step}": ${err.message}` 
-          } : null);
-        }
-        
-        setMigrationStatus(prev => prev ? { ...prev, current: i + 1 } : null);
-      }
-    } catch (err: any) {
-      console.error("Critical migration failure:", err);
-      setMigrationStatus(prev => prev ? { ...prev, error: `Critical: ${err.message}` } : null);
-    } finally {
-      setMigrating(false);
-    }
-  };
-
   return (
     <div className="w-full max-w-4xl mx-auto relative p-4 sm:p-6 pb-12">
       <button
