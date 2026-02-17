@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GraduationCap, BookOpen, ChevronRight, User, Loader2, AlertCircle } from 'lucide-react';
+import { GraduationCap, BookOpen, ChevronRight, Loader2, AlertCircle } from 'lucide-react';
 import { findStudentByName } from '@/lib/services/storage';
 import { Student } from '@/types';
 
@@ -85,11 +85,10 @@ export const LoginScreen: React.FC<Props> = ({ onTutorSelect, onStudentLogin }) 
                 What's your name?
               </label>
               <div className="relative">
-                <User className="absolute left-3 top-3.5 text-slate-400" size={18} />
                 <input
                   type="text"
                   required
-                  className={`w-full pl-10 pr-4 py-3 text-base rounded-lg border ${error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-slate-200 focus:ring-blue-500 focus:border-blue-500'} outline-none transition-all`}
+                  className={`w-full px-4 py-3 text-base rounded-lg border ${error ? 'border-red-300 focus:ring-red-500 focus:border-red-500' : 'border-slate-200 focus:ring-blue-500 focus:border-blue-500'} outline-none transition-all`}
                   placeholder="Enter your name"
                   value={studentName}
                   onChange={(e) => {

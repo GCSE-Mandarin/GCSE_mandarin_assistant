@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Stage, StudentProfile, Student } from '../types';
 import { CURRICULUM } from '../data/curriculum';
 import { getStudents, createStudent } from '@/lib/services/storage';
-import { User, GraduationCap, ChevronRight, PlusCircle, Loader2 } from 'lucide-react';
+import { User, GraduationCap, ChevronRight, Loader2 } from 'lucide-react';
 
 interface Props {
   onComplete: (profile: StudentProfile) => void;
@@ -126,12 +126,11 @@ export const StudentOnboarding: React.FC<Props> = ({ onComplete }) => {
                     <input
                       type="text"
                       required={mode === 'create'}
-                      className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all pl-10"
+                      className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all"
                       placeholder="e.g. Alex Smith"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                     />
-                    <PlusCircle className="absolute left-3 top-3.5 text-slate-400" size={18} />
                   </div>
                 )}
               </div>
