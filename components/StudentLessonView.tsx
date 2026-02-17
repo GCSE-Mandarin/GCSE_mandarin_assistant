@@ -77,8 +77,6 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
   const [currentScore, setCurrentScore] = useState<number | null>(null);
   const [currentFeedback, setCurrentFeedback] = useState<string>('');
   const [evaluating, setEvaluating] = useState(false);
-  const [exerciseImages, setExerciseImages] = useState<Record<number, string>>({});
-  const [imgLoading, setImgLoading] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
   const [showResultDetail, setShowResultDetail] = useState(false);
   
@@ -179,23 +177,6 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
     setGeneratedImage(null);
   }, [currentSection]);
 
-  // Lazy load images for exercises
-  useEffect(() => {
-    const loadExerciseImage = async () => {
-      if (view === 'practice' && !exerciseImages[practiceIndex] && !imgLoading && !submitted && !showResultDetail) {
-        setImgLoading(true);
-        const ex = lesson.exercises[practiceIndex];
-        // Create a prompt that encourages a visual representation of the concept
-        const promptContext = `Visual clue for a Chinese language exercise: "${ex.question}". The answer involves "${ex.answer}".`;
-        const img = await generateImage(promptContext);
-        if (img) {
-          setExerciseImages(prev => ({ ...prev, [practiceIndex]: img }));
-        }
-        setImgLoading(false);
-      }
-    };
-    loadExerciseImage();
-  }, [view, practiceIndex, lesson.exercises, exerciseImages, imgLoading, submitted, showResultDetail]);
 
   const handleAnswerChange = (val: string) => {
     if (feedbackStatus !== 'idle') return;
@@ -232,27 +213,35 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
         }
       }
 
-      // Use AI to evaluate the answer and get a percentage score
-      const evaluation = await evaluateAnswer(
-        currentEx.question,
-        correctAnswerToCompare,
-        userAns,
-        currentEx.type
-      );
+      let score: number;
+      let feedback: string;
 
-      const score = evaluation.score || 0;
-      const feedback = evaluation.feedback || '';
+      if (currentEx.type === 'quiz') {
+        // Local evaluation for quizzes (Multiple Choice)
+        const isMatch = userAns.trim() === correctAnswerToCompare.trim();
+        score = isMatch ? 100 : 0;
+        feedback = isMatch ? 'Correct! Great job!' : 'Incorrect. Please review the correct answer and try again.';
+      } else {
+        // AI evaluation for other types (Translation, Composition, etc.)
+        const evaluation = await evaluateAnswer(
+          currentEx.question,
+          correctAnswerToCompare,
+          userAns,
+          currentEx.type
+        );
+        score = evaluation.score || 0;
+        feedback = evaluation.feedback || '';
+      }
 
       setCurrentScore(score);
       setCurrentFeedback(feedback);
-      setFeedbackStatus(score >= 50 ? 'correct' : 'incorrect'); // Consider >= 50% as "correct" for UI purposes
+      setFeedbackStatus(score >= 50 ? 'correct' : 'incorrect');
 
-      // Update exercise scores array
+      // Update exercise scores and feedback arrays
       const newScores = [...exerciseScores];
       newScores[practiceIndex] = score;
       setExerciseScores(newScores);
 
-      // Update exercise feedback array
       const newFeedback = [...exerciseFeedback];
       newFeedback[practiceIndex] = feedback;
       setExerciseFeedback(newFeedback);
@@ -306,7 +295,26 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
   const handleBackNavigation = () => {
     if (view === 'menu') {
       onBack();
+    } else if (view === 'practice') {
+      if (practiceIndex > 0) {
+        // Go to previous question
+        setPracticeIndex(prev => prev - 1);
+        setFeedbackStatus('idle');
+        setCurrentScore(null);
+        setCurrentFeedback('');
+        setShowTranslation(false);
+      } else {
+        // On first question, go back to menu
+        setView('menu');
+        setPracticeIndex(0);
+        setFeedbackStatus('idle');
+        setCurrentScore(null);
+        setCurrentFeedback('');
+        setShowTranslation(false);
+        setShowResultDetail(false);
+      }
     } else {
+      // For 'learn' view or other states
       setView('menu');
       setCurrentSection(0);
       setGeneratedImage(null);
@@ -736,13 +744,6 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
                 <span className="bg-brand-50 text-brand-700 text-xs font-bold px-3 py-1 rounded uppercase tracking-wider">
                   {currentEx.type}
                 </span>
-                {exerciseImages[practiceIndex] && (
-                  <img 
-                    src={exerciseImages[practiceIndex]} 
-                    alt="Exercise visual" 
-                    className="w-32 h-32 object-cover rounded-lg border border-slate-200"
-                  />
-                )}
               </div>
 
               <h3 className="text-xl font-bold text-slate-800 mb-2 chinese-text">{currentEx.question}</h3>
@@ -841,7 +842,7 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
                 onClick={handleBackNavigation}
                 className="px-6 py-3 rounded-xl font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
               >
-                Back
+                {practiceIndex > 0 ? 'Previous' : 'Back'}
               </button>
               {feedbackStatus === 'idle' ? (
                 <button
