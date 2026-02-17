@@ -73,6 +73,12 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentId, studentName, 
   const [listLoading, setListLoading] = useState(false);
   const [listError, setListError] = useState<string | null>(null);
   const [progressMap, setProgressMap] = useState<Record<string, VocabProgress>>({});
+  const [globalStats, setGlobalStats] = useState<{
+    totalChars: number,
+    viewedChars: number,
+    writingChars: number,
+    pronunciationChars: number
+  }>({ totalChars: 0, viewedChars: 0, writingChars: 0, pronunciationChars: 0 });
   
   const [selectedCharacter, setSelectedCharacter] = useState<string | null>(null);
   const [wordDetails, setWordDetails] = useState<WordDetails | null>(null);
@@ -106,12 +112,41 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentId, studentName, 
         const vocabLists = await getVocabLists();
         const uploadedCategories = vocabLists.map(list => list.category).filter(Boolean);
         
+        // Calculate global stats
+        const allProgress = await getVocabProgress(studentId);
+        let total = 0;
+        let viewed = 0;
+        let writing = 0;
+        let pronunciation = 0;
+
+        // Sum up total unique characters from all lists
+        const allUniqueCharsInLists = new Set<string>();
+        vocabLists.forEach(list => {
+          list.characters.forEach(char => allUniqueCharsInLists.add(char));
+        });
+        total = allUniqueCharsInLists.size;
+
+        // Count practiced unique characters (must exist in at least one list to count)
+        allProgress.forEach(p => {
+          if (allUniqueCharsInLists.has(p.word)) {
+            if (p.practices.viewed > 0) viewed++;
+            if (p.practices.writing > 0) writing++;
+            if (p.practices.pronunciation > 0) pronunciation++;
+          }
+        });
+
+        setGlobalStats({
+          totalChars: total,
+          viewedChars: viewed,
+          writingChars: writing,
+          pronunciationChars: pronunciation
+        });
+
         // Combine predefined categories with uploaded categories, removing duplicates
         const allCategories = Array.from(new Set([...CATEGORIES, ...uploadedCategories]));
         setAvailableCategories(allCategories);
       } catch (error) {
         console.error("Error loading categories:", error);
-        // Fall back to predefined categories on error
         setAvailableCategories(CATEGORIES);
       }
     };
@@ -864,6 +899,44 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentId, studentName, 
     
     return (
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {/* Global Progress Chart */}
+        {globalStats.totalChars > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-slate-800 mb-1">Overall Mastery</h3>
+                <p className="text-sm text-slate-500">Your total progress across all {availableCategories.length} categories</p>
+              </div>
+              
+              <div className="flex flex-wrap gap-4 md:gap-8">
+                {[
+                  { label: 'Viewed', count: globalStats.viewedChars, color: 'bg-blue-500' },
+                  { label: 'Writing', count: globalStats.writingChars, color: 'bg-brand-500' },
+                  { label: 'Speaking', count: globalStats.pronunciationChars, color: 'bg-indigo-500' }
+                ].map((stat) => {
+                  const percentage = Math.round((stat.count / globalStats.totalChars) * 100) || 0;
+                  
+                  return (
+                    <div key={stat.label} className="flex flex-col min-w-[120px]">
+                      <div className="flex justify-between items-end mb-1">
+                        <span className="text-sm font-bold text-slate-400 uppercase tracking-wider">{stat.label}</span>
+                        <span className="text-base font-bold text-slate-800">{percentage}%</span>
+                      </div>
+                      <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                        <div 
+                          className={`${stat.color} h-full transition-all duration-1000 ease-out`} 
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-slate-400 mt-1.5 font-medium">{stat.count} / {globalStats.totalChars} characters</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
         {predefinedCats.length > 0 && (
           <div>
             <h3 className="text-sm font-semibold text-slate-500 uppercase mb-3">Predefined Categories</h3>
@@ -942,7 +1015,45 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentId, studentName, 
                 </button>
             </div>
         ) : (
-            <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 animate-in fade-in">
+            <>
+                {/* Completion Chart */}
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="flex-1">
+                            <h3 className="text-lg font-bold text-slate-800 mb-1">Learning Progress</h3>
+                            <p className="text-sm text-slate-500">Mastering {characterList.length} characters in this category</p>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-4 md:gap-8">
+                            {[
+                                { label: 'Viewed', key: 'viewed' as const, color: 'bg-blue-500' },
+                                { label: 'Writing', key: 'writing' as const, color: 'bg-brand-500' },
+                                { label: 'Speaking', key: 'pronunciation' as const, color: 'bg-indigo-500' }
+                            ].map((stat) => {
+                                const count = characterList.filter(char => (progressMap[char]?.practices[stat.key] || 0) > 0).length;
+                                const percentage = Math.round((count / characterList.length) * 100) || 0;
+                                
+                                return (
+                                    <div key={stat.key} className="flex flex-col min-w-[100px]">
+                                        <div className="flex justify-between items-end mb-1">
+                                            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{stat.label}</span>
+                                            <span className="text-sm font-bold text-slate-700">{percentage}%</span>
+                                        </div>
+                                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                                            <div 
+                                                className={`${stat.color} h-full transition-all duration-1000 ease-out`} 
+                                                style={{ width: `${percentage}%` }}
+                                            />
+                                        </div>
+                                        <span className="text-[10px] text-slate-400 mt-1">{count} / {characterList.length} chars</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 animate-in fade-in">
                 {characterList.map((character, idx) => {
                     const progress = progressMap[character];
                     const isPracticed = progress && (progress.practices.viewed > 0);
@@ -964,7 +1075,8 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentId, studentName, 
                         </button>
                     );
                 })}
-            </div>
+                </div>
+            </>
         )}
     </div>
   );
