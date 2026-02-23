@@ -360,7 +360,7 @@ This is the most common greeting! Think of it like saying "hi" to your friends.
 
 See how easy that is? Now you can greet anyone! 😊"
 
-Remember: Make it fun, simple, and full of examples!`;
+Remember: Make it fun, simple, and full of examples! The objective is to make the learning texts punchy, concise, user friendly.`;
         
         const result = await callWithRetry(async () => {
           const response = await ai.models.generateContent({
