@@ -155,78 +155,101 @@ export const checkApiKeys = async (): Promise<{ geminiConfigured: boolean; opena
   }
 };
 
-// Evaluate student answer and return percentage score (0-100)
+// Rule-based scoring function for Chinese text evaluation (Client-side)
+const calculateRuleBasedScore = (correctAnswer: string, studentAnswer: string): { score: number; feedback: string } => {
+  // Normalize inputs
+  const correct = correctAnswer.trim();
+  const student = studentAnswer.trim();
+  
+  // 1. Exact match (text and punctuation) → 100%
+  if (correct === student) {
+    return {
+      score: 100,
+      feedback: 'Perfect! Your answer is exactly correct.'
+    };
+  }
+  
+  // Extract Chinese characters (remove punctuation, spaces, and non-Chinese characters for comparison)
+  const extractChineseChars = (text: string): string => {
+    return text.split('').filter(char => /[\u4e00-\u9fff]/.test(char)).join('');
+  };
+  
+  // Extract punctuation (Chinese and English punctuation)
+  const extractPunctuation = (text: string): string[] => {
+    return text.split('').filter(char => /[，。！？；：、""''（）【】《》,.!?;:\-"'()\[\]{}]/.test(char));
+  };
+  
+  const correctChars = extractChineseChars(correct);
+  const studentChars = extractChineseChars(student);
+  const correctPunctuation = extractPunctuation(correct);
+  const studentPunctuation = extractPunctuation(student);
+  
+  // Check if Chinese characters match
+  const charsMatch = correctChars.length > 0 && correctChars === studentChars;
+  
+  // Check for any overlap (at least one Chinese character in common)
+  const hasOverlap = correctChars.length > 0 && studentChars.length > 0 && 
+    [...correctChars].some(char => studentChars.includes(char));
+  
+  // Check if punctuation matches
+  const hasCorrectPunctuation = correctPunctuation.length > 0 && 
+    correctPunctuation.some(p => studentPunctuation.includes(p));
+  
+  const allPunctuationDifferent = correctPunctuation.length > 0 && 
+    !correctPunctuation.some(p => studentPunctuation.includes(p));
+  
+  const noPunctuationInCorrect = correctPunctuation.length === 0;
+  
+  // Apply scoring rules
+  if (charsMatch) {
+    if (noPunctuationInCorrect) {
+      if (studentPunctuation.length === 0) {
+        return { score: 100, feedback: 'Perfect! Your answer is correct.' };
+      } else {
+        return { score: 75, feedback: 'Excellent! Your Chinese characters are correct, but you have extra punctuation.' };
+      }
+    } else if (hasCorrectPunctuation) {
+      return { score: 75, feedback: 'Great! Your Chinese characters are correct and you have some correct punctuation.' };
+    } else if (allPunctuationDifferent) {
+      return { score: 50, feedback: 'Good! Your Chinese characters are correct, but the punctuation needs work.' };
+    } else {
+      return { score: 75, feedback: 'Excellent! Your Chinese characters are correct.' };
+    }
+  } else if (hasOverlap) {
+    return { score: 25, feedback: 'You have some correct characters, but the answer needs more work.' };
+  } else {
+    return { score: 0, feedback: 'Review the correct answer and try again.' };
+  }
+};
+
+// Evaluate student answer locally WITHOUT AI or network requests
 export const evaluateAnswer = async (
-  question: string,
+  _question: string, // Kept for signature compatibility
   correctAnswer: string,
   studentAnswer: string,
   questionType?: string
 ): Promise<{ score: number; feedback: string }> => {
   try {
-    console.log('[EvaluateAnswer] Calling Netlify function with:', {
-      question: question.substring(0, 50),
-      correctAnswer: correctAnswer.substring(0, 50),
-      studentAnswer: studentAnswer.substring(0, 50),
-      questionType
-    });
-    
-    const result = await callNetlifyFunction('evaluateAnswer', { 
-      question, 
-      correctAnswer, 
-      studentAnswer,
-      questionType 
-    });
-    
-    console.log('[EvaluateAnswer] Netlify function returned:', result);
-    
-    // Check if result has expected structure
-    if (result && typeof result === 'object' && typeof result.score === 'number') {
-      return result;
-    } else if (result && result.score !== undefined) {
-      // Try to convert score to number if it's a string
-      const score = typeof result.score === 'string' ? parseInt(result.score, 10) : result.score;
-      return {
-        score: isNaN(score) ? 0 : Math.max(0, Math.min(100, Math.round(score))),
-        feedback: result.feedback || 'Evaluation completed.'
-      };
-    }
-    
-    console.error('[EvaluateAnswer] Invalid result structure:', result);
-    throw new Error('Invalid result structure from evaluation function');
-  } catch (error: any) {
-    console.error("[EvaluateAnswer] Error:", error);
-    console.error("[EvaluateAnswer] Error details:", {
-      message: error?.message,
-      stack: error?.stack
-    });
-    
-    // Fallback to similarity-based scoring instead of binary
-    const normalizedStudent = studentAnswer.trim().toLowerCase();
-    const normalizedCorrect = correctAnswer.trim().toLowerCase();
-    
-    // Simple similarity check for partial credit
-    if (normalizedStudent === normalizedCorrect) {
-      return { 
-        score: 100, 
-        feedback: 'Answer is correct.' 
-      };
-    }
-    
-    // Calculate similarity for partial credit
-    if (normalizedStudent.length > 0 && normalizedCorrect.length > 0) {
-      const matchingChars = [...normalizedCorrect].filter(char => normalizedStudent.includes(char)).length;
-      const similarity = (matchingChars / Math.max(normalizedCorrect.length, normalizedStudent.length)) * 100;
-      const partialScore = Math.round(similarity);
+    // For choice questions (quiz type), use binary scoring
+    if (questionType === 'quiz') {
+      const correct = correctAnswer.trim();
+      const student = studentAnswer.trim();
+      const isMatch = correct === student;
       
       return {
-        score: Math.max(10, Math.min(90, partialScore)), // Cap between 10-90% for partial answers
-        feedback: `Partial credit: ${partialScore}% of the answer is correct. ${partialScore >= 50 ? 'Good effort!' : 'Keep practicing!'}`
+        score: isMatch ? 100 : 0,
+        feedback: isMatch ? 'Correct! Great job!' : 'Incorrect.'
       };
+    } else {
+      // For translation/composition, use the local rule-based engine
+      return calculateRuleBasedScore(correctAnswer, studentAnswer);
     }
-    
-    return { 
-      score: 0, 
-      feedback: 'Answer is incorrect. Please try again.' 
+  } catch (error) {
+    console.error('[EvaluateAnswer] Local evaluation failed:', error);
+    const isCorrect = correctAnswer.trim() === studentAnswer.trim();
+    return {
+      score: isCorrect ? 100 : 0,
+      feedback: isCorrect ? 'Answer is correct.' : 'Answer is incorrect.'
     };
   }
 };

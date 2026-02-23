@@ -674,9 +674,10 @@ Answer their questions about this material or Mandarin in general. Keep answers 
           ruleBasedResult = calculateRuleBasedScore(correctAnswer, studentAnswer);
         }
         
-        // Optionally enhance feedback with AI (but keep the rule-based score)
-        let finalFeedback = ruleBasedResult.feedback;
+        // AI feedback enhancement is currently disabled to improve performance
+        const finalFeedback = ruleBasedResult.feedback;
         
+        /* 
         // Try to get AI-enhanced feedback if API key is available
         if (geminiApiKey) {
           try {
@@ -752,6 +753,7 @@ Return ONLY the feedback text, no JSON, no quotes, just the feedback message.`;
             // Continue with rule-based feedback
           }
         }
+        */
 
         return {
           statusCode: 200,
