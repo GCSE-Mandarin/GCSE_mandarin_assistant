@@ -295,35 +295,18 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
   const handleBackNavigation = () => {
     if (view === 'menu') {
       onBack();
-    } else if (view === 'practice') {
-      if (practiceIndex > 0) {
-        // Go to previous question
-        setPracticeIndex(prev => prev - 1);
-        setFeedbackStatus('idle');
-        setCurrentScore(null);
-        setCurrentFeedback('');
-        setShowTranslation(false);
-      } else {
-        // On first question, go back to menu
-        setView('menu');
-        setPracticeIndex(0);
-        setFeedbackStatus('idle');
-        setCurrentScore(null);
-        setCurrentFeedback('');
-        setShowTranslation(false);
-        setShowResultDetail(false);
-      }
     } else {
-      // For 'learn' view or other states
+      // From any active state (practice or learn), go back to the lesson menu
       setView('menu');
-      setCurrentSection(0);
-      setGeneratedImage(null);
-      setPracticeIndex(0);
+      // Reset common states
       setFeedbackStatus('idle');
       setCurrentScore(null);
       setCurrentFeedback('');
       setShowTranslation(false);
       setShowResultDetail(false);
+      
+      // We don't necessarily want to reset practiceIndex or currentSection 
+      // so the student can resume where they left off if they re-enter
     }
   };
 
@@ -693,19 +676,27 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
                   <p className="text-blue-900 text-sm">{lesson.tutorOverallComment}</p>
                 </div>
               )}
-              <div className="flex gap-3">
+              <div className="flex flex-col gap-3">
                 <button
                   onClick={() => setShowResultDetail(true)}
-                  className="flex-1 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-semibold transition-colors"
+                  className="w-full px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-colors"
                 >
-                  View Details
+                  View Question Details
                 </button>
-                <button
-                  onClick={handleBackNavigation}
-                  className="flex-1 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-semibold transition-colors"
-                >
-                  Back to Menu
-                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setView('menu')}
+                    className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-colors text-sm"
+                  >
+                    Lesson Menu
+                  </button>
+                  <button
+                    onClick={onBack}
+                    className="flex-1 px-4 py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-semibold transition-colors text-sm"
+                  >
+                    Finish & Exit
+                  </button>
+                </div>
               </div>
             </div>
           </main>
