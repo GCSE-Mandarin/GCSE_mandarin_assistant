@@ -3,7 +3,7 @@ import { Stage, Topic, LearningPoint, Exercise, AssignedLesson } from '../types'
 import { generateLearningMaterial, generateExercises } from '@/lib/services/geminiService';
 import { saveLesson } from '@/lib/services/storage';
 import ReactMarkdown from 'react-markdown';
-import { Loader2, Save, ArrowLeft, RefreshCw, PenLine, Plus, Trash2, X, ChevronRight, BookOpen, Dumbbell, Send, Languages, AlertTriangle } from 'lucide-react';
+import { Loader2, Save, ArrowLeft, RefreshCw, PenLine, Plus, Minus, Trash2, X, ChevronRight, BookOpen, Dumbbell, Send, Languages, AlertTriangle } from 'lucide-react';
 
 interface Props {
   stage: Stage;
@@ -18,6 +18,10 @@ type EditorView = 'material' | 'exercises';
 
 export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName, studentId, onBack }) => {
   const [view, setView] = useState<EditorView>('material');
+  
+  // Font Size State
+  const fontSizes = ['prose-sm', 'prose', 'prose-lg', 'prose-xl', 'prose-2xl'];
+  const [fontSizeIndex, setFontSizeIndex] = useState(1);
   
   // Material State
   const [materialLoading, setMaterialLoading] = useState(true);
@@ -227,16 +231,37 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
             <div className="h-full flex flex-col">
                 <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
                     <div className="max-w-3xl mx-auto bg-white shadow-sm border border-slate-200 rounded-2xl p-8 min-h-full">
-                        <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
-                            <h3 className="text-lg font-bold text-slate-800">Learning Material</h3>
-                            <button 
-                                onClick={() => setEditMaterialMode(!editMaterialMode)}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${editMaterialMode ? 'bg-brand-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
-                            >
-                                {editMaterialMode ? <Save size={16} /> : <PenLine size={16} />}
-                                {editMaterialMode ? 'Done' : 'Edit'}
-                            </button>
-                        </div>
+                            <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                                <h3 className="text-lg font-bold text-slate-800">Learning Material</h3>
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center bg-slate-100 rounded-lg p-1">
+                                        <button 
+                                            onClick={() => setFontSizeIndex(Math.max(0, fontSizeIndex - 1))}
+                                            disabled={fontSizeIndex === 0}
+                                            className="p-1 text-slate-500 hover:text-slate-800 disabled:opacity-30 disabled:hover:text-slate-500 transition-colors"
+                                            title="Decrease font size"
+                                        >
+                                            <Minus size={16} />
+                                        </button>
+                                        <span className="text-xs font-semibold text-slate-600 px-2 select-none">Aa</span>
+                                        <button 
+                                            onClick={() => setFontSizeIndex(Math.min(fontSizes.length - 1, fontSizeIndex + 1))}
+                                            disabled={fontSizeIndex === fontSizes.length - 1}
+                                            className="p-1 text-slate-500 hover:text-slate-800 disabled:opacity-30 disabled:hover:text-slate-500 transition-colors"
+                                            title="Increase font size"
+                                        >
+                                            <Plus size={16} />
+                                        </button>
+                                    </div>
+                                    <button 
+                                        onClick={() => setEditMaterialMode(!editMaterialMode)}
+                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${editMaterialMode ? 'bg-brand-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
+                                    >
+                                        {editMaterialMode ? <Save size={16} /> : <PenLine size={16} />}
+                                        {editMaterialMode ? 'Done' : 'Edit'}
+                                    </button>
+                                </div>
+                            </div>
 
                         {editMaterialMode ? (
                             <textarea 
@@ -245,7 +270,7 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
                                 onChange={(e) => setMaterial(e.target.value)}
                             />
                         ) : (
-                            <div className="prose prose-slate prose-headings:font-bold prose-h1:text-2xl prose-h2:text-xl prose-p:text-slate-600 prose-li:text-slate-600 max-w-none">
+                            <div className={`prose prose-slate prose-headings:font-bold prose-p:text-slate-600 prose-li:text-slate-600 max-w-none transition-all duration-200 ${fontSizes[fontSizeIndex]}`}>
                                 <ReactMarkdown>{material}</ReactMarkdown>
                             </div>
                         )}

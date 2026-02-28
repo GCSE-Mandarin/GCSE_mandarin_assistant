@@ -1,3 +1,6 @@
+[dev]
+  command = "npm run next-dev"
+
 [build]
   command = "npm run build"
   publish = ".next"
