@@ -1,12 +1,12 @@
-// All AI calls now go through Netlify function at /.netlify/functions/generate
+// All AI calls now go through Next.js API Route at /api/generate
 // API keys are stored securely on the server and never exposed to the client
 
 import { Exercise, VocabWord, WordDetails } from "@/types";
 
-// Helper to call the Netlify function
-const callNetlifyFunction = async (action: string, params: any): Promise<any> => {
+// Helper to call the API Route
+const callApiRoute = async (action: string, params: any): Promise<any> => {
   try {
-    const response = await fetch('/.netlify/functions/generate', {
+    const response = await fetch('/api/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -33,7 +33,7 @@ export const generateLearningMaterial = async (
   point: string
 ): Promise<string> => {
   try {
-    const result = await callNetlifyFunction('generateLearningMaterial', { stage, topic, point });
+    const result = await callApiRoute('generateLearningMaterial', { stage, topic, point });
     return result || "## Error\nNo content generated.";
   } catch (error: any) {
     console.error("Gemini API Error (Material):", error);
@@ -51,7 +51,7 @@ export const generateExercises = async (
   learningMaterialContext: string
 ): Promise<Exercise[]> => {
   try {
-    const result = await callNetlifyFunction('generateExercises', { 
+    const result = await callApiRoute('generateExercises', { 
       stage, 
       topic, 
       point, 
@@ -66,7 +66,7 @@ export const generateExercises = async (
 
 export const generateImage = async (context: string): Promise<string | null> => {
   try {
-    const result = await callNetlifyFunction('generateImage', { context });
+    const result = await callApiRoute('generateImage', { context });
     return result;
   } catch (error) {
     console.error("Gemini Image Gen Error:", error);
@@ -76,7 +76,7 @@ export const generateImage = async (context: string): Promise<string | null> => 
 
 export const generateSpeech = async (text: string): Promise<string | { audioData: ArrayBuffer, format: 'openai' } | null> => {
   try {
-    const result = await callNetlifyFunction('generateSpeech', { text });
+    const result = await callApiRoute('generateSpeech', { text });
     
     // Check if result is OpenAI format (has audioData and format fields)
     if (result && typeof result === 'object' && 'format' in result && result.format === 'openai') {
@@ -105,7 +105,7 @@ export const getChatResponse = async (
   history: { role: 'user' | 'model', text: string }[]
 ): Promise<string> => {
   try {
-    const result = await callNetlifyFunction('getChatResponse', { 
+    const result = await callApiRoute('getChatResponse', { 
       message, 
       contextMaterial, 
       history 
@@ -121,7 +121,7 @@ export const getChatResponse = async (
 
 export const generateVocabularyList = async (category: string): Promise<VocabWord[]> => {
   try {
-    const result = await callNetlifyFunction('generateVocabularyList', { category });
+    const result = await callApiRoute('generateVocabularyList', { category });
     return Array.isArray(result) ? result : [];
   } catch (error: any) {
     console.error("Vocab List Error:", error);
@@ -136,7 +136,7 @@ export const generateVocabularyList = async (category: string): Promise<VocabWor
 
 export const generateWordDetails = async (word: string): Promise<WordDetails | null> => {
   try {
-    const result = await callNetlifyFunction('generateWordDetails', { character: word });
+    const result = await callApiRoute('generateWordDetails', { character: word });
     return result;
   } catch (error) {
     console.error("Word Details Error:", error);
@@ -147,7 +147,7 @@ export const generateWordDetails = async (word: string): Promise<WordDetails | n
 // Check API key status (for Settings view)
 export const checkApiKeys = async (): Promise<{ geminiConfigured: boolean; openaiConfigured: boolean }> => {
   try {
-    const result = await callNetlifyFunction('check-keys', {});
+    const result = await callApiRoute('check-keys', {});
     return result || { geminiConfigured: false, openaiConfigured: false };
   } catch (error) {
     console.error("Check API Keys Error:", error);

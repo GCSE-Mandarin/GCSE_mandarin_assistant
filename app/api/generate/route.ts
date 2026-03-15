@@ -1,4 +1,4 @@
-import { Handler } from '@netlify/functions';
+import { NextResponse } from 'next/server';
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import OpenAI from "openai";
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
@@ -254,51 +254,17 @@ const calculateRuleBasedScore = (correctAnswer: string, studentAnswer: string): 
   }
 };
 
-export const handler: Handler = async (event, context) => {
-  // CORS headers for all responses
-  const corsHeaders: Record<string, string> = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Content-Type': 'application/json',
-  };
-
-  // Handle CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Content-Type': 'application/json', // Added to maintain type consistency
-      },
-      body: '',
-    };
-  }
-
-  // Only allow POST requests
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers: corsHeaders,
-      body: JSON.stringify({ error: 'Method not allowed' }),
-    };
-  }
-
+export async function POST(req: Request) {
   try {
-    const body = JSON.parse(event.body || '{}');
-    const { action, ...params } = body;
+    const body = await req.json();
+    const { action, ...params } = body || {};
 
-    // Get API keys from environment variables (set in Netlify)
+    // Get API keys from environment variables
     const geminiApiKey = process.env.GEMINI_API_KEY;
     const openaiApiKey = process.env.OPENAI_API_KEY;
 
     if (!geminiApiKey && action !== 'check-keys') {
-      return {
-        statusCode: 500,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'GEMINI_API_KEY not configured' }),
-      };
+      return NextResponse.json({ error: 'GEMINI_API_KEY not configured' }, { status: 500 });
     }
 
     switch (action) {
@@ -373,11 +339,7 @@ Remember: Make it fun, simple, and full of examples! The objective is to make th
           return response.text;
         });
 
-        return {
-          statusCode: 200,
-          headers: corsHeaders,
-          body: JSON.stringify({ result: result || "## Error\nNo content generated." }),
-        };
+        return NextResponse.json({ result: result || "## Error\nNo content generated." });
       }
 
       case 'generateExercises': {
@@ -405,11 +367,7 @@ Return JSON array with exercises. Each exercise: { "type": "quiz"|"translation",
         const parsed = safeJsonParse(text, { exercises: [] });
         const exercises = parsed.exercises && Array.isArray(parsed.exercises) ? parsed.exercises : (Array.isArray(parsed) ? parsed : []);
 
-        return {
-          statusCode: 200,
-          headers: corsHeaders,
-          body: JSON.stringify({ result: exercises }),
-        };
+        return NextResponse.json({ result: exercises });
       }
 
       case 'generateImage': {
@@ -429,19 +387,11 @@ Return JSON array with exercises. Each exercise: { "type": "quiz"|"translation",
         if (result.candidates?.[0]?.content?.parts) {
           for (const part of result.candidates[0].content.parts) {
             if (part.inlineData) {
-              return {
-                statusCode: 200,
-                headers: corsHeaders,
-                body: JSON.stringify({ result: `data:image/png;base64,${part.inlineData.data}` }),
-              };
+              return NextResponse.json({ result: `data:image/png;base64,${part.inlineData.data}` });
             }
           }
         }
-        return {
-          statusCode: 200,
-          headers: corsHeaders,
-          body: JSON.stringify({ result: null }),
-        };
+        return NextResponse.json({ result: null });
       }
 
       case 'generateSpeech': {
@@ -449,11 +399,7 @@ Return JSON array with exercises. Each exercise: { "type": "quiz"|"translation",
         const speechText = text.replace(/[*#_]/g, '').substring(0, 500);
         
         if (!speechText.trim()) {
-          return {
-            statusCode: 400,
-            headers: corsHeaders,
-            body: JSON.stringify({ error: 'Text to convert is empty' }),
-          };
+          return NextResponse.json({ error: 'Text to convert is empty' }, { status: 400 });
         }
 
         const trimmedText = speechText.trim();
@@ -472,17 +418,13 @@ Return JSON array with exercises. Each exercise: { "type": "quiz"|"translation",
             // Convert ArrayBuffer to base64 string
             const buffer = Buffer.from(arrayBuffer);
             const base64Audio = buffer.toString('base64');
-            return {
-              statusCode: 200,
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                result: { 
-                  audioData: base64Audio, 
-                  format: 'openai',
-                  mimeType: 'audio/mpeg'
-                } 
-              }),
-            };
+            return NextResponse.json({ 
+              result: { 
+                audioData: base64Audio, 
+                format: 'openai',
+                mimeType: 'audio/mpeg'
+              } 
+            });
           } catch (error) {
             console.log("[TTS] OpenAI TTS failed, falling back to Gemini:", error);
           }
@@ -512,36 +454,20 @@ Return JSON array with exercises. Each exercise: { "type": "quiz"|"translation",
         }, 1);
 
         if (!result.candidates || result.candidates.length === 0) {
-          return {
-            statusCode: 500,
-            headers: corsHeaders,
-            body: JSON.stringify({ error: 'No candidates in response' }),
-          };
+          return NextResponse.json({ error: 'No candidates in response' }, { status: 500 });
         }
 
         const candidate = result.candidates[0];
         if (candidate.finishReason && candidate.finishReason !== 'STOP') {
-          return {
-            statusCode: 500,
-            headers: corsHeaders,
-            body: JSON.stringify({ error: `TTS request finished with reason: ${candidate.finishReason}` }),
-          };
+          return NextResponse.json({ error: `TTS request finished with reason: ${candidate.finishReason}` }, { status: 500 });
         }
 
         const audioData = candidate.content?.parts?.[0]?.inlineData?.data;
         if (!audioData) {
-          return {
-            statusCode: 500,
-            headers: corsHeaders,
-            body: JSON.stringify({ error: 'No audio data in response' }),
-          };
+          return NextResponse.json({ error: 'No audio data in response' }, { status: 500 });
         }
 
-        return {
-          statusCode: 200,
-          headers: corsHeaders,
-          body: JSON.stringify({ result: audioData }),
-        };
+        return NextResponse.json({ result: audioData });
       }
 
       case 'generateVocabularyList': {
@@ -565,11 +491,7 @@ Output format: STRICT JSON array. NO markdown. NO trailing commas.`;
         const parsed = safeJsonParse(text, []);
         const vocabList = Array.isArray(parsed) ? parsed : [];
 
-        return {
-          statusCode: 200,
-          headers: corsHeaders,
-          body: JSON.stringify({ result: vocabList }),
-        };
+        return NextResponse.json({ result: vocabList });
       }
 
       case 'generateWordDetails': {
@@ -595,11 +517,7 @@ Return JSON: { "character": "${character}", "pinyin": "...", "meaning": "...", "
         let text = response.text || "{}";
         const parsed = safeJsonParse(text, null);
 
-        return {
-          statusCode: 200,
-          headers: corsHeaders,
-          body: JSON.stringify({ result: parsed }),
-        };
+        return NextResponse.json({ result: parsed });
       }
 
       case 'getChatResponse': {
@@ -623,22 +541,14 @@ Answer their questions about this material or Mandarin in general. Keep answers 
         });
 
         const result = await chat.sendMessage({ message });
-        return {
-          statusCode: 200,
-          headers: corsHeaders,
-          body: JSON.stringify({ result: result.text || "I didn't catch that." }),
-        };
+        return NextResponse.json({ result: result.text || "I didn't catch that." });
       }
 
       case 'evaluateAnswer': {
         const { question, correctAnswer, studentAnswer, questionType } = params;
         
         if (!question || correctAnswer === undefined || studentAnswer === undefined) {
-          return {
-            statusCode: 400,
-            headers: corsHeaders,
-            body: JSON.stringify({ error: 'Missing required parameters: question, correctAnswer, studentAnswer' }),
-          };
+          return NextResponse.json({ error: 'Missing required parameters: question, correctAnswer, studentAnswer' }, { status: 400 });
         }
 
         // For choice questions (quiz type), use binary scoring (100% or 0%)
@@ -676,125 +586,30 @@ Answer their questions about this material or Mandarin in general. Keep answers 
         
         // AI feedback enhancement is currently disabled to improve performance
         const finalFeedback = ruleBasedResult.feedback;
-        
-        /* 
-        // Try to get AI-enhanced feedback if API key is available
-        if (geminiApiKey) {
-          try {
-            // Fetch tutor examples for few-shot learning
-            const tutorExamples = await fetchTutorExamples(3);
-            
-            const ai = new GoogleGenAI({ apiKey: geminiApiKey });
-            
-            // Build tutor examples section if available
-            let tutorExamplesSection = '';
-            if (tutorExamples.length > 0) {
-              tutorExamplesSection = `\n\n**Learn from Tutor Examples (how tutors typically adjust scores):**\n`;
-              tutorExamples.forEach((ex, idx) => {
-                tutorExamplesSection += `\nExample ${idx + 1}:\n`;
-                tutorExamplesSection += `- Question: ${ex.question}\n`;
-                tutorExamplesSection += `- Correct Answer: ${ex.correctAnswer}\n`;
-                tutorExamplesSection += `- Student Answer: ${ex.studentAnswer}\n`;
-                tutorExamplesSection += `- AI Score: ${ex.aiScore}%\n`;
-                tutorExamplesSection += `- Tutor Adjusted Score: ${ex.tutorAdjustedScore}%\n`;
-                if (ex.tutorComment) {
-                  tutorExamplesSection += `- Tutor Comment: "${ex.tutorComment}"\n`;
-                }
-                tutorExamplesSection += `(Note: Tutor adjusted from ${ex.aiScore}% to ${ex.tutorAdjustedScore}%)\n`;
-              });
-              tutorExamplesSection += `\nUse these examples to understand how tutors typically evaluate answers. Match their style and standards in your feedback.\n`;
-            }
-            
-            const scoringCriteria = questionType === 'quiz' 
-              ? `- 100%: Exact match with correct answer
-- 0%: Answer does not match`
-              : `- 100%: Exact match (text and punctuation)
-- 75%: Chinese characters match + any correct punctuation
-- 50%: Chinese characters match but punctuation all different
-- 25%: Any overlap between student and correct answer
-- 0%: No overlap`;
-            
-            const feedbackPrompt = `You are an IGCSE Mandarin teacher. Provide brief, encouraging feedback for a student's answer.
 
-Question: ${question}
-Question Type: ${questionType || 'general'}
-Correct Answer: ${correctAnswer}
-Student's Answer: ${studentAnswer}
-Score: ${ruleBasedResult.score}%
-
-The score has already been calculated using ${questionType === 'quiz' ? 'binary' : 'rule-based'} criteria:
-${scoringCriteria}${tutorExamplesSection}
-
-Provide a brief, encouraging feedback message (1-2 sentences) that:
-1. Acknowledges what the student got right
-2. Gently points out what needs improvement
-3. Is encouraging and supportive
-4. Follows the style and standards shown in the tutor examples above
-
-Return ONLY the feedback text, no JSON, no quotes, just the feedback message.`;
-
-            const aiResponse = await callWithRetry(async () => {
-              const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: feedbackPrompt,
-                config: {
-                  maxOutputTokens: 200,
-                }
-              });
-              return response.text;
-            }, 1); // Only 1 retry for feedback enhancement
-            
-            if (aiResponse && aiResponse.trim()) {
-              finalFeedback = aiResponse.trim();
-              console.log('[EvaluateAnswer] AI-enhanced feedback:', finalFeedback);
-            }
-          } catch (error: any) {
-            console.warn('[EvaluateAnswer] Could not enhance feedback with AI, using rule-based feedback:', error?.message);
-            // Continue with rule-based feedback
-          }
-        }
-        */
-
-        return {
-          statusCode: 200,
-          headers: corsHeaders,
-          body: JSON.stringify({ 
-            result: { 
-              score: ruleBasedResult.score, 
-              feedback: finalFeedback 
-            } 
-          }),
-        };
+        return NextResponse.json({ 
+          result: { 
+            score: ruleBasedResult.score, 
+            feedback: finalFeedback 
+          } 
+        });
       }
 
       case 'check-keys': {
-        return {
-          statusCode: 200,
-          headers: corsHeaders,
-          body: JSON.stringify({ 
-            geminiConfigured: !!geminiApiKey,
-            openaiConfigured: !!openaiApiKey 
-          }),
-        };
+        return NextResponse.json({ 
+          geminiConfigured: !!geminiApiKey,
+          openaiConfigured: !!openaiApiKey 
+        });
       }
 
       default:
-        return {
-          statusCode: 400,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: `Unknown action: ${action}` }),
-        };
+        return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });
     }
   } catch (error: any) {
     console.error('Function error:', error);
-    return {
-      statusCode: 500,
-      headers: corsHeaders,
-      body: JSON.stringify({ 
-        error: error?.message || 'Internal server error',
-        details: error?.stack 
-      }),
-    };
+    return NextResponse.json({ 
+      error: error?.message || 'Internal server error',
+      details: error?.stack 
+    }, { status: 500 });
   }
-};
-
+}
