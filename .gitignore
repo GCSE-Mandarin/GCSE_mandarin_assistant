@@ -38,3 +38,6 @@ next-env.d.ts
 
 # legacy
 /_legacy
+
+# deno
+deno.lock
