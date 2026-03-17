@@ -296,19 +296,23 @@ Generate learning material for:
    - Break content into small, digestible chunks
 
 3. **Examples are CRITICAL:**
-   - Include AT LEAST 3-5 examples for every concept you explain
+   - Include 3 examples for every concept you explain
    - Show examples in this format: **Chinese Characters (Pinyin)** - *English Meaning*
    - Use real-world, relatable examples that teenagers can connect with
    - Include example sentences showing how to use the concept
    - Make examples fun and memorable (use names, places, or situations teens relate to)
 
 4. **Content Requirements:**
-   - Start with a friendly introduction that gets students excited
+   - No greeting
+   - Start with a introduction to the content and a summary of key concepts in this session
    - Explain concepts step-by-step in simple terms
    - Use analogies or comparisons to make things easier to understand
    - Include visual descriptions when helpful
    - End each section with a quick summary or "Key Takeaway"
-
+   - End with a reminder to practice the exercises
+   - All content should be related with the topic or learning points
+   - No general conversation such as greeting or goodbye paragraphes 
+   
 5. **Format:**
    - Every time you use Chinese text, ALWAYS provide: **Characters (Pinyin)** - *English*
    - Use bullet points for lists
@@ -316,7 +320,7 @@ Generate learning material for:
    - Keep paragraphs short (2-3 sentences max)
 
 **Example of good content style:**
-"Hey! Let's learn about greetings! 🎉 This is super useful - you'll use these every day!
+"Let's learn about greetings! 🎉 This is super useful - you'll use these every day!
 
 **你好 (nǐ hǎo)** - *Hello*
 This is the most common greeting! Think of it like saying "hi" to your friends.
@@ -325,8 +329,6 @@ This is the most common greeting! Think of it like saying "hi" to your friends.
 - When you meet a friend: **你好！(nǐ hǎo!)** - *Hello!*
 - When you see your teacher: **老师，你好！(lǎo shī, nǐ hǎo!)** - *Teacher, hello!*
 - In the morning: **早上好 (zǎo shàng hǎo)** - *Good morning!*
-
-See how easy that is? Now you can greet anyone! 😊"
 
 Remember: Make it fun, simple, and full of examples! The objective is to make the learning texts punchy, concise, user friendly.`;
         

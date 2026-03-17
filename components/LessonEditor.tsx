@@ -26,12 +26,14 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
   // Material State
   const [materialLoading, setMaterialLoading] = useState(true);
   const [material, setMaterial] = useState('');
+  const [originalMaterial, setOriginalMaterial] = useState('');
   const [editMaterialMode, setEditMaterialMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Exercises State
   const [exercisesLoading, setExercisesLoading] = useState(false);
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [originalExercises, setOriginalExercises] = useState<Exercise[]>([]);
   const [editExercisesMode, setEditExercisesMode] = useState(false);
   
   // Saving State
@@ -46,8 +48,10 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
       try {
         const data = await generateLearningMaterial(stage.title, topic.title, point.description);
         if (mounted) {
+          setOriginalMaterial(data);
           setMaterial(data);
           setMaterialLoading(false);
+          setOriginalExercises([]);
           setExercises([]);
         }
       } catch (err: any) {
@@ -71,6 +75,7 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
     if (exercises.length === 0) {
       setExercisesLoading(true);
       const data = await generateExercises(stage.title, topic.title, point.description, material);
+      setOriginalExercises(JSON.parse(JSON.stringify(data)));
       setExercises(data);
       setExercisesLoading(false);
     }
@@ -124,6 +129,7 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
     setExercisesLoading(true);
     setExercises([]); // Clear to show loading state better
     const data = await generateExercises(stage.title, topic.title, point.description, material);
+    setOriginalExercises(JSON.parse(JSON.stringify(data)));
     setExercises(data);
     setExercisesLoading(false);
   };
@@ -138,7 +144,9 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
       topicTitle: topic.title,
       pointDescription: point.description,
       material: material,
+      originalMaterial: originalMaterial,
       exercises: exercises,
+      originalExercises: originalExercises,
       assignedDate: new Date().toISOString(),
       completed: false
     };

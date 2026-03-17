@@ -39,7 +39,9 @@ export interface AssignedLesson {
   topicTitle: string;
   pointDescription: string;
   material: string;
+  originalMaterial?: string; // Original AI generated material before tutor edits
   exercises: Exercise[];
+  originalExercises?: Exercise[]; // Original AI generated exercises before tutor edits
   assignedDate: string;
   completed: boolean;
   score?: number; // Total score (sum of exercise scores or count of correct answers)
