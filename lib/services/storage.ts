@@ -1,26 +1,18 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { createClient } from '@/utils/supabase/client';
 import { AssignedLesson, VocabProgress, VocabList, Student } from '@/types';
 
-let supabaseInstance: SupabaseClient | null = null;
+// Create a single client instance for browser operations
+const supabaseInstance = createClient();
 
 export const getSupabase = () => {
-  if (supabaseInstance) return supabaseInstance;
+  return supabaseInstance;
+};
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !key) {
-    console.error("Missing Supabase environment variables.");
-    return null;
-  }
-
-  try {
-    supabaseInstance = createClient(url, key);
-    return supabaseInstance;
-  } catch (e) {
-    console.error("Failed to init Supabase", e);
-    return null;
-  }
+const getTutorId = async () => {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+  const { data: { user } } = await supabase.auth.getUser();
+  return user?.id || null;
 };
 
 // --- SAVE LESSON ---
@@ -28,11 +20,15 @@ export const saveLesson = async (lesson: AssignedLesson): Promise<void> => {
   const supabase = getSupabase();
   if (!supabase) throw new Error("Supabase client not initialized");
 
+  const tutorId = await getTutorId();
+  if (!tutorId) throw new Error("Not logged in as tutor");
+
   const { error } = await supabase.from('lessons').insert({
     id: lesson.id,
     student_name: lesson.studentName,
     student_id: lesson.studentId,
-    data: lesson
+    data: lesson,
+    tutor_id: tutorId
   });
 
   if (error) {
@@ -148,10 +144,14 @@ export const saveVocabProgress = async (progress: VocabProgress): Promise<void> 
       
       if (updateError) throw updateError;
     } else {
+      const tutorId = await getTutorId();
+      if (!tutorId) throw new Error("Not logged in as tutor");
+
       const { error: insertError } = await supabase.from('vocab_progress').insert({
         id: progress.id,
         student_name: progress.studentName,
-        data: progress
+        data: progress,
+        tutor_id: tutorId
       });
       
       if (insertError) throw insertError;
@@ -183,10 +183,14 @@ export const saveVocabList = async (vocabList: VocabList): Promise<void> => {
       
       if (updateError) throw updateError;
     } else {
+      const tutorId = await getTutorId();
+      if (!tutorId) throw new Error("Not logged in as tutor");
+
       const { error: insertError } = await supabase.from('vocab_lists').insert({
         id: vocabList.id,
         category: vocabList.category,
-        data: vocabList
+        data: vocabList,
+        tutor_id: tutorId
       });
       
       if (insertError) throw insertError;
@@ -261,9 +265,12 @@ export const createStudent = async (name: string): Promise<Student | null> => {
   if (!supabase) return null;
 
   try {
+    const tutorId = await getTutorId();
+    if (!tutorId) return null;
+
     const { data, error } = await supabase
       .from('students')
-      .insert([{ name }])
+      .insert([{ name, tutor_id: tutorId }])
       .select()
       .single();
 

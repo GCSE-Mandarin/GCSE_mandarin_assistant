@@ -79,7 +79,7 @@ export const TutorDashboard: React.FC<Props> = ({
         onClick={onBack}
         className="mb-6 sm:mb-8 flex items-center gap-2 text-slate-500 hover:text-slate-700 transition-colors touch-manipulation py-2"
       >
-        <ArrowLeft size={20} /> <span className="text-base sm:text-lg">Back to Login</span>
+        <ArrowLeft size={20} /> <span className="text-base sm:text-lg">Sign Out</span>
       </button>
 
       <div className="text-center mb-8 sm:mb-12">
