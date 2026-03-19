@@ -242,7 +242,6 @@ body {
   textarea,
   select {
     font-size: 16px !important; /* Prevents zoom on iOS */
-    padding: 0.75rem;
   }
   
   /* Better modal spacing */

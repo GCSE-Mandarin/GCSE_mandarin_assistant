@@ -98,8 +98,8 @@ export const LoginScreen: React.FC<Props> = ({ onTutorSelect, onStudentLogin }) 
                 />
               </div>
               {error && (
-                  <div className="flex items-center gap-2 mt-2 text-sm text-red-600">
-                      <AlertCircle size={16} />
+                  <div className="flex items-start gap-2 mt-2 text-sm text-red-600">
+                      <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
                       <span>{error}</span>
                   </div>
               )}
@@ -112,7 +112,7 @@ export const LoginScreen: React.FC<Props> = ({ onTutorSelect, onStudentLogin }) 
             >
               {loading ? (
                   <>
-                    <Loader2 size={18} className="animate-spin" /> Checking...
+                    <Loader2 size={18} className="animate-spin flex-shrink-0" /> Checking...
                   </>
               ) : (
                   <>Enter Dashboard <ChevronRight size={18} /></>
