@@ -140,11 +140,18 @@ export const CURRICULUM: Stage[] = [
         ]
       },
       {
-        id: "s2-rw",
-        title: "Writing & Reading",
+        id: "s2-reading",
+        title: "Reading",
         points: [
-          { id: "s2-writing", description: "Write 3–4 sentence paragraphs about daily life" },
-          { id: "s2-reading", description: "Read short paragraphs (80–100 chars)" }
+          { id: "s2-read-basic", description: "Read short paragraphs (80–100 chars)" },
+          { id: "s2-read-picture", description: "Picture Reading (看图理解)" }
+        ]
+      },
+      {
+        id: "s2-writing",
+        title: "Writing",
+        points: [
+          { id: "s2-write-basic", description: "Write 3–4 sentence paragraphs about daily life" }
         ]
       },
       {
@@ -207,12 +214,19 @@ export const CURRICULUM: Stage[] = [
         ]
       },
       {
-        id: "s3-rw",
-        title: "Writing & Reading",
+        id: "s3-reading",
+        title: "Reading",
+        points: [
+          { id: "s3-read", description: "Read letters, short articles" },
+          { id: "s3-read-picture", description: "Picture Reading (看图理解)" }
+        ]
+      },
+      {
+        id: "s3-writing",
+        title: "Writing",
         points: [
           { id: "s3-comp", description: "150-character compositions" },
-          { id: "s3-read", description: "Read letters, short articles" },
-          { id: "s3-connect", description: "Use paragraph connectors: 首先, 然后, 最后" }
+          { id: "s3-write-connect", description: "Use paragraph connectors: 首先, 然后, 最后" }
         ]
       },
       {
@@ -274,7 +288,8 @@ export const CURRICULUM: Stage[] = [
         points: [
           { id: "s4-articles", description: "Articles 200–250 characters" },
           { id: "s4-gist", description: "Identify main ideas + details" },
-          { id: "s4-skim", description: "Skim for gist, infer meaning" }
+          { id: "s4-skim", description: "Skim for gist, infer meaning" },
+          { id: "s4-read-picture", description: "Picture Reading (看图理解)" }
         ]
       },
       {

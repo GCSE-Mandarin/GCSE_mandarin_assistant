@@ -12,8 +12,8 @@ const notoSansSC = Noto_Sans_SC({
 });
 
 export const metadata: Metadata = {
-  title: "Mandarin Master Plan",
-  description: "IGCSE Preparation Platform",
+  title: "beakedu.ai",
+  description: "AI-powered GCSE Mandarin Learning Platform",
 };
 
 export default function RootLayout({

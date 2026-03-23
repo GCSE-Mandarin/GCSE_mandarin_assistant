@@ -39,8 +39,8 @@ export const LoginScreen: React.FC<Props> = ({ onTutorSelect, onStudentLogin }) 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4 sm:p-6">
       <div className="text-center mb-6 sm:mb-10">
-        <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-2 sm:mb-3">Mandarin Master Plan</h1>
-        <p className="text-slate-500 text-base sm:text-lg">IGCSE Preparation Platform</p>
+        <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-2 sm:mb-3">beakedu.ai</h1>
+        <p className="text-slate-500 text-base sm:text-lg">AI-powered GCSE Mandarin Learning Platform</p>
       </div>
 
 
