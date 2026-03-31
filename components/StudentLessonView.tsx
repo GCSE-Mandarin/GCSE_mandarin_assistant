@@ -387,9 +387,9 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
         <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-4 sticky top-0 z-10">
           <button 
             onClick={onBack}
-            className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+            className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors font-medium py-1 px-2 rounded-lg hover:bg-slate-50"
           >
-            <ArrowLeft size={20} />
+            <ArrowLeft size={20} /> Back
           </button>
           <div className="flex-1">
             <h2 className="text-lg font-bold text-slate-800 line-clamp-1">{lesson.pointDescription}</h2>

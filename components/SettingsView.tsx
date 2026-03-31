@@ -49,11 +49,14 @@ export const SettingsView: React.FC<Props> = ({ onBack }) => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center p-6">
       <div className="w-full max-w-2xl bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-        <div className="bg-slate-900 p-6 flex items-center gap-4 text-white">
-          <button onClick={onBack} className="hover:bg-slate-800 p-2 rounded-lg transition-colors">
-            <ArrowLeft size={20} />
+        <div className="bg-white border-b border-slate-100 p-4 sm:p-6 flex items-center gap-4">
+          <button 
+            onClick={onBack} 
+            className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors font-medium py-1 px-2 rounded-lg hover:bg-slate-50"
+          >
+            <ArrowLeft size={20} /> Back
           </button>
-          <h1 className="text-xl font-bold">App Settings</h1>
+          <h1 className="text-xl font-bold text-slate-800">App Settings</h1>
         </div>
 
         <form onSubmit={handleSave} className="p-8 space-y-8">

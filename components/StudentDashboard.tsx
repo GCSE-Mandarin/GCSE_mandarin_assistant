@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { AssignedLesson } from '../types';
 import { getLessonsByStudentId } from '@/lib/services/storage';
-import { BookOpen, CheckCircle, Clock, LogOut, Loader2, RefreshCw, Languages } from 'lucide-react';
+import { BookOpen, CheckCircle, Clock, ArrowLeft, Loader2, RefreshCw, Languages } from 'lucide-react';
 
 interface Props {
   studentName: string;
@@ -38,8 +38,16 @@ export const StudentDashboard: React.FC<Props> = ({ studentName, onSelectLesson,
 
   return (
     <div className="w-full">
-      <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+      <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-4 sticky top-0 z-10 transition-all">
+        <button 
+          onClick={onLogout}
+          className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors font-medium py-1 px-2 rounded-lg hover:bg-slate-50"
+          title="Back to Sign In"
+        >
+          <ArrowLeft size={20} /> Back
+        </button>
+
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 border-l border-slate-100 pl-4">
           <div className="bg-blue-100 p-1.5 sm:p-2 rounded-lg flex-shrink-0">
             <BookOpen className="text-blue-600" size={18} />
           </div>
@@ -48,6 +56,7 @@ export const StudentDashboard: React.FC<Props> = ({ studentName, onSelectLesson,
             <p className="text-xs text-slate-500">Your Assignments</p>
           </div>
         </div>
+
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             <button 
                 onClick={loadLessons}
@@ -55,13 +64,6 @@ export const StudentDashboard: React.FC<Props> = ({ studentName, onSelectLesson,
                 title="Refresh"
             >
                 <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
-            </button>
-            <button 
-                onClick={onLogout}
-                className="text-slate-400 hover:text-slate-600 transition-colors p-2 touch-manipulation"
-                title="Logout"
-            >
-                <LogOut size={20} />
             </button>
         </div>
       </header>

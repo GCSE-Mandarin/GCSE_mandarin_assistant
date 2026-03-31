@@ -77,9 +77,9 @@ export const TutorDashboard: React.FC<Props> = ({
 
       <button
         onClick={onBack}
-        className="mb-6 sm:mb-8 flex items-center gap-2 text-slate-500 hover:text-slate-700 transition-colors touch-manipulation py-2"
+        className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors font-medium py-1 px-2 rounded-lg hover:bg-slate-50 mb-6 sm:mb-8"
       >
-        <ArrowLeft size={20} /> <span className="text-base sm:text-lg">Sign Out</span>
+        <ArrowLeft size={20} /> Back
       </button>
 
       <div className="text-center mb-8 sm:mb-12">
@@ -94,7 +94,7 @@ export const TutorDashboard: React.FC<Props> = ({
         {/* Plan Lesson Card */}
         <button
           onClick={onPlanLesson}
-          className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 hover:border-brand-300 hover:shadow-xl transition-all group text-left flex flex-col min-h-[240px] sm:h-64 touch-manipulation active:scale-[0.98]"
+          className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 hover:border-brand-300 hover:shadow-xl transition-all group text-left flex flex-col min-h-[240px] sm:min-h-[16rem] touch-manipulation active:scale-[0.98]"
         >
           <div className="bg-brand-50 w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-brand-100 transition-colors">
             <PenTool className="text-brand-600 w-7 h-7 sm:w-8 sm:h-8" />
@@ -111,7 +111,7 @@ export const TutorDashboard: React.FC<Props> = ({
         {/* Vocabulary Management Card */}
         <button
           onClick={onManageVocab}
-          className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 hover:border-green-300 hover:shadow-xl transition-all group text-left flex flex-col min-h-[240px] sm:h-64 touch-manipulation active:scale-[0.98]"
+          className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 hover:border-green-300 hover:shadow-xl transition-all group text-left flex flex-col min-h-[240px] sm:min-h-[16rem] touch-manipulation active:scale-[0.98]"
         >
           <div className="bg-green-50 w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-green-100 transition-colors">
             <BookOpen className="text-green-600 w-7 h-7 sm:w-8 sm:h-8" />
@@ -128,7 +128,7 @@ export const TutorDashboard: React.FC<Props> = ({
         {/* Progress Card */}
         <button
           onClick={onViewProgress}
-          className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-300 hover:shadow-xl transition-all group text-left flex flex-col min-h-[240px] sm:h-64 touch-manipulation active:scale-[0.98]"
+          className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-300 hover:shadow-xl transition-all group text-left flex flex-col min-h-[240px] sm:min-h-[16rem] touch-manipulation active:scale-[0.98]"
         >
           <div className="bg-blue-50 w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-blue-100 transition-colors">
             <BarChart3 className="text-blue-600 w-7 h-7 sm:w-8 sm:h-8" />
@@ -145,7 +145,7 @@ export const TutorDashboard: React.FC<Props> = ({
         {/* Curriculum Card */}
         <button
           onClick={onCurriculum}
-          className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 hover:border-purple-300 hover:shadow-xl transition-all group text-left flex flex-col min-h-[240px] sm:h-64 touch-manipulation active:scale-[0.98]"
+          className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 hover:border-purple-300 hover:shadow-xl transition-all group text-left flex flex-col min-h-[240px] sm:min-h-[16rem] touch-manipulation active:scale-[0.98]"
         >
           <div className="bg-purple-50 w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-purple-100 transition-colors">
             <GraduationCap className="text-purple-600 w-7 h-7 sm:w-8 sm:h-8" />

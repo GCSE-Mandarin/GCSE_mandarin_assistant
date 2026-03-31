@@ -1178,9 +1178,9 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentId, studentName, 
                 else if (view === 'list') setView('categories');
                 else onBack();
             }}
-            className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+            className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors font-medium py-1 px-2 rounded-lg hover:bg-slate-50"
           >
-            <ArrowLeft size={20} />
+            <ArrowLeft size={20} /> Back
           </button>
           <div>
             <h2 className="text-lg font-bold text-slate-800">
