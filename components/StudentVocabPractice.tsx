@@ -685,6 +685,8 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentId, studentName, 
                     showCharacter: false,
                     showOutline: true,
                     showHintAfterMisses: 1,
+                    strokeHighlightSpeed: 0.5,
+                    highlightColor: "#FF0000",
                     highlightOnComplete: true,
                     padding: 5,
                     onComplete: async () => {

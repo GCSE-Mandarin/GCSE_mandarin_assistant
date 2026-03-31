@@ -334,7 +334,7 @@ Remember: Make it fun, simple, and full of examples! The objective is to make th
         
         const result = await callWithRetry(async () => {
           const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: prompt,
             config: {
               maxOutputTokens: 6000, // Increased for more examples
@@ -357,7 +357,7 @@ Return JSON array with exercises. Each exercise: { "type": "quiz"|"translation",
         
         const result = await callWithRetry(async () => {
           const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: prompt,
             config: {
               responseMimeType: 'application/json',
@@ -484,7 +484,7 @@ Return ONLY a JSON array with objects containing: character (Simplified Chinese)
 Output format: STRICT JSON array. NO markdown. NO trailing commas.`;
         
         const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3-flash-preview',
           contents: prompt,
           config: {
             responseMimeType: 'application/json'
@@ -511,7 +511,7 @@ Output format: STRICT JSON array. NO markdown. NO trailing commas.`;
 Return JSON: { "character": "${character}", "pinyin": "...", "meaning": "...", "exampleSentenceCh": "...", "exampleSentenceEn": "..." }`;
         
         const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3-flash-preview',
           contents: prompt,
           config: {
             responseMimeType: 'application/json'
@@ -536,7 +536,7 @@ ${contextMaterial.substring(0, 4000)}
 Answer their questions about this material or Mandarin in general. Keep answers brief, encouraging, and clear.`;
 
         const chat = ai.chats.create({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3-flash-preview',
           config: { systemInstruction },
           history: history.map((h: any) => ({
             role: h.role,
