@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Noto_Sans_SC } from "next/font/google";
 import "./globals.css";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/react"
 
 const inter = Inter({ subsets: ["latin"] });
 const notoSansSC = Noto_Sans_SC({ 
@@ -27,6 +28,7 @@ export default function RootLayout({
         <div id="root" className="min-h-screen">
             {children}
         </div>
+        <Analytics />
         <Script 
           src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.5/dist/hanzi-writer.min.js" 
           strategy="beforeInteractive" 
