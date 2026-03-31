@@ -356,19 +356,17 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
             await ctx.resume();
         }
 
-        let audioBytes: Uint8Array;
-        if (typeof speechResult === 'string') {
-          audioBytes = decode(speechResult);
-        } else {
-          audioBytes = new Uint8Array(speechResult.audioData);
-        }
-
-        const audioBuffer = await decodeAudioData(
-            audioBytes,
-            ctx,
-            24000,
-            1
-        );
+        // Decode the MP3/AAC Base64 data from Vercel AI SDK
+        const audioBuffer = await (async () => {
+          const base64 = typeof speechResult === 'string' ? speechResult : '';
+          const binaryString = window.atob(base64);
+          const len = binaryString.length;
+          const bytes = new Uint8Array(len);
+          for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          return await ctx.decodeAudioData(bytes.buffer);
+        })();
 
         const source = ctx.createBufferSource();
         source.buffer = audioBuffer;

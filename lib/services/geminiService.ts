@@ -1,16 +1,12 @@
-// All AI calls now go through Next.js API Route at /api/generate
-// API keys are stored securely on the server and never exposed to the client
-
 import { Exercise, VocabWord, WordDetails } from "@/types";
 
-// Helper to call the API Route
+const CALL_URL = '/api/generate';
+
 const callApiRoute = async (action: string, params: any): Promise<any> => {
   try {
-    const response = await fetch('/api/generate', {
+    const response = await fetch(CALL_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, ...params }),
     });
 
@@ -22,10 +18,12 @@ const callApiRoute = async (action: string, params: any): Promise<any> => {
     const data = await response.json();
     return data.result;
   } catch (error: any) {
-    console.error(`Error calling ${action}:`, error);
+    console.error(`[API Proxy Error] Action: ${action}:`, error);
     throw error;
   }
 };
+
+// --- Educational Content Generation ---
 
 export const generateLearningMaterial = async (
   stage: string,
@@ -36,10 +34,7 @@ export const generateLearningMaterial = async (
     const result = await callApiRoute('generateLearningMaterial', { stage, topic, point });
     return result || "## Error\nNo content generated.";
   } catch (error: any) {
-    console.error("Gemini API Error (Material):", error);
-    if (error?.message?.includes('GEMINI_API_KEY')) {
-      throw new Error("MISSING_API_KEY");
-    }
+    if (error?.message?.includes('GEMINI_API_KEY')) throw new Error("MISSING_API_KEY");
     throw error;
   }
 };
@@ -51,51 +46,27 @@ export const generateExercises = async (
   learningMaterialContext: string
 ): Promise<Exercise[]> => {
   try {
-    const result = await callApiRoute('generateExercises', { 
-      stage, 
-      topic, 
-      point, 
-      learningMaterialContext 
-    });
+    const result = await callApiRoute('generateExercises', { stage, topic, point, learningMaterialContext });
     return Array.isArray(result) ? result : [];
   } catch (error) {
-    console.error("Gemini API Error (Exercises):", error);
     return [];
   }
 };
 
 export const generateImage = async (context: string): Promise<string | null> => {
   try {
-    const result = await callApiRoute('generateImage', { context });
-    return result;
+    return await callApiRoute('generateImage', { context });
   } catch (error) {
-    console.error("Gemini Image Gen Error:", error);
     return null;
   }
 };
 
-export const generateSpeech = async (text: string): Promise<string | { audioData: ArrayBuffer, format: 'openai' } | null> => {
+export const generateSpeech = async (text: string): Promise<string | null> => {
   try {
-    const result = await callApiRoute('generateSpeech', { text });
-    
-    // Check if result is OpenAI format (has audioData and format fields)
-    if (result && typeof result === 'object' && 'format' in result && result.format === 'openai') {
-      // Convert base64 string back to ArrayBuffer
-      const base64Audio = result.audioData;
-      const binaryString = atob(base64Audio);
-      const len = binaryString.length;
-      const bytes = new Uint8Array(len);
-      for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-      return { audioData: bytes.buffer, format: 'openai' };
-    }
-    
-    // Otherwise it's Gemini format (base64 string)
-    return result || null;
-  } catch (error: any) {
-    console.error("[TTS] Error:", error);
-    throw error;
+    return await callApiRoute('generateSpeech', { text });
+  } catch (error) {
+    console.error("[TTS Error]:", error);
+    return null;
   }
 };
 
@@ -105,76 +76,45 @@ export const getChatResponse = async (
   history: { role: 'user' | 'model', text: string }[]
 ): Promise<string> => {
   try {
-    const result = await callApiRoute('getChatResponse', { 
-      message, 
-      contextMaterial, 
-      history 
-    });
-    return result || "I didn't catch that.";
+    return await callApiRoute('getChatResponse', { message, contextMaterial, history });
   } catch (error) {
-    console.error("Chat Error:", error);
     return "Sorry, I'm having trouble thinking right now.";
   }
 };
 
-// --- Vocabulary Specific Functions ---
+// --- Vocabulary ---
 
 export const generateVocabularyList = async (category: string): Promise<VocabWord[]> => {
   try {
     const result = await callApiRoute('generateVocabularyList', { category });
     return Array.isArray(result) ? result : [];
-  } catch (error: any) {
-    console.error("Vocab List Error:", error);
-    if (error?.message?.includes('GEMINI_API_KEY')) {
-      const apiError: any = new Error("MISSING_API_KEY");
-      apiError.message = 'MISSING_API_KEY';
-      throw apiError;
-    }
+  } catch (error) {
     return [];
   }
 };
 
 export const generateWordDetails = async (word: string): Promise<WordDetails | null> => {
   try {
-    const result = await callApiRoute('generateWordDetails', { character: word });
-    return result;
+    return await callApiRoute('generateWordDetails', { character: word });
   } catch (error) {
-    console.error("Word Details Error:", error);
     return null;
   }
 };
 
-// Check API key status (for Settings view)
-export const checkApiKeys = async (): Promise<{ geminiConfigured: boolean; openaiConfigured: boolean }> => {
-  try {
-    const result = await callApiRoute('check-keys', {});
-    return result || { geminiConfigured: false, openaiConfigured: false };
-  } catch (error) {
-    console.error("Check API Keys Error:", error);
-    return { geminiConfigured: false, openaiConfigured: false };
-  }
-};
+// --- System & Evaluation (RESTORED LOGIC) ---
 
-// Rule-based scoring function for Chinese text evaluation (Client-side)
 const calculateRuleBasedScore = (correctAnswer: string, studentAnswer: string): { score: number; feedback: string } => {
-  // Normalize inputs
   const correct = correctAnswer.trim();
   const student = studentAnswer.trim();
   
-  // 1. Exact match (text and punctuation) → 100%
   if (correct === student) {
-    return {
-      score: 100,
-      feedback: 'Perfect! Your answer is exactly correct.'
-    };
+    return { score: 100, feedback: 'Perfect! Your answer is exactly correct.' };
   }
   
-  // Extract Chinese characters (remove punctuation, spaces, and non-Chinese characters for comparison)
   const extractChineseChars = (text: string): string => {
     return text.split('').filter(char => /[\u4e00-\u9fff]/.test(char)).join('');
   };
   
-  // Extract punctuation (Chinese and English punctuation)
   const extractPunctuation = (text: string): string[] => {
     return text.split('').filter(char => /[，。！？；：、""''（）【】《》,.!?;:\-"'()\[\]{}]/.test(char));
   };
@@ -184,23 +124,15 @@ const calculateRuleBasedScore = (correctAnswer: string, studentAnswer: string): 
   const correctPunctuation = extractPunctuation(correct);
   const studentPunctuation = extractPunctuation(student);
   
-  // Check if Chinese characters match
-  const charsMatch = correctChars.length > 0 && correctChars === studentChars;
-  
-  // Check for any overlap (at least one Chinese character in common)
+  const charsMatch = correctChars !== '' && correctChars === studentChars;
   const hasOverlap = correctChars.length > 0 && studentChars.length > 0 && 
     [...correctChars].some(char => studentChars.includes(char));
-  
-  // Check if punctuation matches
   const hasCorrectPunctuation = correctPunctuation.length > 0 && 
     correctPunctuation.some(p => studentPunctuation.includes(p));
-  
   const allPunctuationDifferent = correctPunctuation.length > 0 && 
     !correctPunctuation.some(p => studentPunctuation.includes(p));
-  
   const noPunctuationInCorrect = correctPunctuation.length === 0;
   
-  // Apply scoring rules
   if (charsMatch) {
     if (noPunctuationInCorrect) {
       if (studentPunctuation.length === 0) {
@@ -222,34 +154,27 @@ const calculateRuleBasedScore = (correctAnswer: string, studentAnswer: string): 
   }
 };
 
-// Evaluate student answer locally WITHOUT AI or network requests
 export const evaluateAnswer = async (
-  _question: string, // Kept for signature compatibility
+  _question: string,
   correctAnswer: string,
   studentAnswer: string,
   questionType?: string
 ): Promise<{ score: number; feedback: string }> => {
   try {
-    // For choice questions (quiz type), use binary scoring
     if (questionType === 'quiz') {
-      const correct = correctAnswer.trim();
-      const student = studentAnswer.trim();
-      const isMatch = correct === student;
-      
-      return {
-        score: isMatch ? 100 : 0,
-        feedback: isMatch ? 'Correct! Great job!' : 'Incorrect.'
-      };
-    } else {
-      // For translation/composition, use the local rule-based engine
-      return calculateRuleBasedScore(correctAnswer, studentAnswer);
+      const isMatch = correctAnswer.trim() === studentAnswer.trim();
+      return { score: isMatch ? 100 : 0, feedback: isMatch ? 'Correct! Great job!' : 'Incorrect.' };
     }
+    return calculateRuleBasedScore(correctAnswer, studentAnswer);
   } catch (error) {
-    console.error('[EvaluateAnswer] Local evaluation failed:', error);
-    const isCorrect = correctAnswer.trim() === studentAnswer.trim();
-    return {
-      score: isCorrect ? 100 : 0,
-      feedback: isCorrect ? 'Answer is correct.' : 'Answer is incorrect.'
-    };
+    return { score: 0, feedback: 'Evaluation failed.' };
+  }
+};
+
+export const checkApiKeys = async (): Promise<{ geminiConfigured: boolean; openaiConfigured: boolean }> => {
+  try {
+    return await callApiRoute('check-keys', {});
+  } catch (error) {
+    return { geminiConfigured: false, openaiConfigured: false };
   }
 };

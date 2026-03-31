@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState, useEffect, useRef } from 'react';
 import { generateVocabularyList, generateWordDetails, generateSpeech } from '@/lib/services/geminiService';
 import { VocabWord, WordDetails, VocabProgress, VocabList } from '../types';
@@ -515,17 +515,9 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentId, studentName, 
         let openaiAudio: { audioData: ArrayBuffer, format: 'openai' } | null = null;
         
         try {
-          console.log("[PlayAudio] Calling generateSpeech for:", text);
           const result = await generateSpeech(text);
-          
-          // Check if result is OpenAI format or Gemini format
-          if (result && typeof result === 'object' && 'format' in result && result.format === 'openai') {
-            openaiAudio = result as { audioData: ArrayBuffer, format: 'openai' };
-            console.log("[PlayAudio] OpenAI TTS returned audio");
-          } else {
-            base64Audio = result as string | null;
-            console.log("[PlayAudio] Gemini TTS returned:", base64Audio ? `audio data (${base64Audio.length} chars)` : "null");
-          }
+          base64Audio = result as string | null;
+          console.log("[PlayAudio] Gemini/OpenAI TTS returned:", base64Audio ? `audio data (${base64Audio.length} chars)` : "null");
         } catch (error: any) {
           console.error("[PlayAudio] Error calling generateSpeech:", error);
           console.error("[PlayAudio] Error stack:", error?.stack);
@@ -544,29 +536,23 @@ export const StudentVocabPractice: React.FC<Props> = ({ studentId, studentName, 
 
         let audioBuffer: AudioBuffer;
         
-        if (openaiAudio) {
-          // OpenAI returns MP3 format - decode directly using Web Audio API
-          console.log("Decoding OpenAI audio (MP3 format)");
+        if (base64Audio) {
+          // Robust decoding for any compressed format (MP3/AAC) from the backend
+          console.log("Decoding Base64 audio stream, length:", base64Audio.length);
           try {
-            audioBuffer = await ctx.decodeAudioData(openaiAudio.audioData);
-            console.log("OpenAI audio decoded, duration:", audioBuffer.duration);
+            const binaryString = window.atob(base64Audio);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            // ctx.decodeAudioData is the 'gold standard' - it auto-detects MP3/WAV/AAC headers
+            audioBuffer = await ctx.decodeAudioData(bytes.buffer);
           } catch (decodeError) {
-            console.error("Failed to decode OpenAI audio:", decodeError);
-            alert("Failed to decode audio. Please try again.");
+            console.error("Audio decoding failed. Likely malformed Base64 or unsupported codec:", decodeError);
+            alert("Audio playback failed. Please refresh the page.");
             setAudioLoading(false);
             return;
           }
-        } else if (base64Audio) {
-          // Gemini returns PCM format - use custom decoder
-          console.log("Decoding Gemini audio (PCM format), length:", base64Audio.length);
-          const decodedData = decode(base64Audio);
-          if (decodedData.length === 0) {
-            console.error("Decoded audio data is empty");
-            alert("Failed to decode audio data. Please try again.");
-            setAudioLoading(false);
-            return;
-          }
-          audioBuffer = await decodeAudioData(decodedData, ctx, 24000, 1);
         } else {
           console.error("[PlayAudio] No audio returned from generateSpeech");
           alert("Failed to generate audio. The API returned no audio data. Please check your API key and try again.");
