@@ -12,6 +12,7 @@ export const CURRICULUM: Stage[] = [
         id: "s1-pinyin",
         title: "Pinyin & tones",
         points: [
+          { id: "s1-summary", description: "Learn Pinyin basics" },
           { id: "s1-tones", description: "Learn 4 tones and neutral tone" },
           { id: "s1-initials", description: "Identify initials/finals" },
           { id: "s1-tone-pairs", description: "Practice tone pairs" },
