@@ -1,58 +1,64 @@
 import React, { useState, useEffect } from 'react';
-import { Stage, Topic, LearningPoint, Exercise, AssignedLesson } from '../types';
+import { Stage, Topic, LearningPoint, Exercise, LessonTemplate } from '../types';
 import { generateLearningMaterial, generateExercises } from '@/lib/services/geminiService';
-import { saveLesson } from '@/lib/services/storage';
+import { getLessonTemplate, saveLessonTemplate } from '@/lib/services/storage';
 import ReactMarkdown from 'react-markdown';
-import { Loader2, Save, ArrowLeft, RefreshCw, PenLine, Plus, Minus, Trash2, X, ChevronRight, BookOpen, Dumbbell, Send, Languages, AlertTriangle } from 'lucide-react';
+import { Loader2, Save, ArrowLeft, RefreshCw, PenLine, Plus, Minus, Trash2, X, ChevronRight, BookOpen, Dumbbell, Languages, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 interface Props {
   stage: Stage;
   topic: Topic;
   point: LearningPoint;
-  studentName: string;
-  studentId?: string;
   onBack: () => void;
 }
 
 type EditorView = 'material' | 'exercises';
 
-export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName, studentId, onBack }) => {
+export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack }) => {
   const [view, setView] = useState<EditorView>('material');
   
-  // Font Size State
   const fontSizes = ['prose-sm', 'prose', 'prose-lg', 'prose-xl', 'prose-2xl'];
   const [fontSizeIndex, setFontSizeIndex] = useState(1);
   
-  // Material State
   const [materialLoading, setMaterialLoading] = useState(true);
   const [material, setMaterial] = useState('');
   const [originalMaterial, setOriginalMaterial] = useState('');
   const [editMaterialMode, setEditMaterialMode] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Exercises State
   const [exercisesLoading, setExercisesLoading] = useState(false);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [originalExercises, setOriginalExercises] = useState<Exercise[]>([]);
   const [editExercisesMode, setEditExercisesMode] = useState(false);
   
-  // Saving State
   const [saving, setSaving] = useState(false);
+  const [isExistingTemplate, setIsExistingTemplate] = useState(false);
+  const [saved, setSaved] = useState(false);
 
-  // Initial Load - Generate Material Only
   useEffect(() => {
     let mounted = true;
-    const fetchMaterial = async () => {
+    const loadOrGenerate = async () => {
       setMaterialLoading(true);
       setError(null);
       try {
+        const existing = await getLessonTemplate(point.id);
+        if (existing && mounted) {
+          setMaterial(existing.material);
+          setOriginalMaterial(existing.originalMaterial || existing.material);
+          setExercises(existing.exercises || []);
+          setOriginalExercises(existing.originalExercises || []);
+          setIsExistingTemplate(true);
+          setMaterialLoading(false);
+          return;
+        }
+
         const data = await generateLearningMaterial(stage.title, topic.title, point.description);
         if (mounted) {
           setOriginalMaterial(data);
           setMaterial(data);
-          setMaterialLoading(false);
           setOriginalExercises([]);
           setExercises([]);
+          setMaterialLoading(false);
         }
       } catch (err: any) {
         if (mounted) {
@@ -65,11 +71,10 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
         }
       }
     };
-    fetchMaterial();
+    loadOrGenerate();
     return () => { mounted = false; };
   }, [stage, topic, point]);
 
-  // Handlers for Material
   const handleGenerateExercises = async () => {
     setView('exercises');
     if (exercises.length === 0) {
@@ -81,7 +86,6 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
     }
   };
 
-  // Handlers for Exercises Editing
   const handleExerciseChange = (index: number, field: keyof Exercise, value: any) => {
     const updated = [...exercises];
     updated[index] = { ...updated[index], [field]: value };
@@ -127,42 +131,58 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
 
   const regenerateExercises = async () => {
     setExercisesLoading(true);
-    setExercises([]); // Clear to show loading state better
+    setExercises([]);
     const data = await generateExercises(stage.title, topic.title, point.description, material);
     setOriginalExercises(JSON.parse(JSON.stringify(data)));
     setExercises(data);
     setExercisesLoading(false);
   };
 
-  const handleAssignToStudent = async () => {
-    setSaving(true);
-    const newLesson: AssignedLesson = {
-      id: crypto.randomUUID(),
-      studentName: studentName,
-      studentId: studentId,
-      stageTitle: stage.title,
-      topicTitle: topic.title,
-      pointDescription: point.description,
-      material: material,
-      originalMaterial: originalMaterial,
-      exercises: exercises,
-      originalExercises: originalExercises,
-      assignedDate: new Date().toISOString(),
-      completed: false
-    };
-
+  const regenerateMaterial = async () => {
+    setMaterialLoading(true);
+    setError(null);
     try {
-        await saveLesson(newLesson);
-        alert(`Lesson assigned to ${studentName} successfully!`);
-        onBack();
-    } catch (e) {
-        alert("Failed to save lesson. Check your internet or Supabase settings.");
-    } finally {
-        setSaving(false);
+      const data = await generateLearningMaterial(stage.title, topic.title, point.description);
+      setOriginalMaterial(data);
+      setMaterial(data);
+      setExercises([]);
+      setOriginalExercises([]);
+      setMaterialLoading(false);
+    } catch (err: any) {
+      if (err.message === 'MISSING_API_KEY') {
+        setError("Missing API Key. Please go to Settings to configure it.");
+      } else {
+        setError("Failed to generate content. Please try again.");
+      }
+      setMaterialLoading(false);
     }
   };
 
-  // Error Screen
+  const handleSaveTemplate = async () => {
+    setSaving(true);
+    const template: LessonTemplate = {
+      pointId: point.id,
+      stageTitle: stage.title,
+      topicTitle: topic.title,
+      pointDescription: point.description,
+      material,
+      originalMaterial,
+      exercises,
+      originalExercises,
+    };
+
+    try {
+      await saveLessonTemplate(template);
+      setIsExistingTemplate(true);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (e) {
+      alert("Failed to save template. Check your internet or Supabase settings.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (error) {
     return (
       <div className="h-full flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
@@ -181,22 +201,22 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
     );
   }
 
-  // Loading Screen
   if (materialLoading) {
     return (
       <div className="h-full flex flex-col items-center justify-center bg-slate-50">
         <div className="animate-spin text-brand-500 mb-4">
           <Loader2 size={48} />
         </div>
-        <h3 className="text-xl font-semibold text-slate-700">Planning Lesson...</h3>
-        <p className="text-slate-500 mt-2">Generating material for "{point.description}"</p>
+        <h3 className="text-xl font-semibold text-slate-700">
+          {isExistingTemplate ? 'Loading Template...' : 'Generating Lesson...'}
+        </h3>
+        <p className="text-slate-500 mt-2">"{point.description}"</p>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
-      {/* Header */}
       <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
         <div className="flex items-center gap-4">
           <button 
@@ -206,7 +226,14 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
             <ArrowLeft size={20} /> Back
           </button>
           <div>
-            <h2 className="text-lg font-bold text-slate-800 line-clamp-1">{point.description}</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-bold text-slate-800 line-clamp-1">{point.description}</h2>
+              {isExistingTemplate && (
+                <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <CheckCircle2 size={12} /> Saved
+                </span>
+              )}
+            </div>
             <div className="flex gap-2 text-xs text-slate-500">
               <span className="bg-slate-100 px-2 py-0.5 rounded">{stage.title}</span>
               <span className="bg-slate-100 px-2 py-0.5 rounded">{topic.title}</span>
@@ -214,7 +241,6 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
           </div>
         </div>
 
-        {/* View Switcher / Tabs */}
         <div className="flex bg-slate-100 p-1 rounded-lg">
             <button 
                 onClick={() => setView('material')}
@@ -231,10 +257,8 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="flex-1 overflow-y-auto custom-scrollbar relative">
         
-        {/* VIEW 1: MATERIAL */}
         {view === 'material' && (
             <div className="h-full flex flex-col">
                 <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
@@ -242,6 +266,13 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
                             <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
                                 <h3 className="text-lg font-bold text-slate-800">Learning Material</h3>
                                 <div className="flex items-center gap-4">
+                                    <button
+                                        onClick={regenerateMaterial}
+                                        className="p-2 text-slate-400 hover:text-brand-600 transition-colors"
+                                        title="Regenerate material with AI"
+                                    >
+                                        <RefreshCw size={18} />
+                                    </button>
                                     <div className="flex items-center bg-slate-100 rounded-lg p-1">
                                         <button 
                                             onClick={() => setFontSizeIndex(Math.max(0, fontSizeIndex - 1))}
@@ -285,8 +316,15 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
                     </div>
                 </div>
                 
-                {/* Footer Action */}
-                <div className="p-4 bg-white border-t border-slate-200 flex justify-center">
+                <div className="p-4 bg-white border-t border-slate-200 flex justify-center gap-4">
+                    <button 
+                        onClick={handleSaveTemplate}
+                        disabled={saving}
+                        className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-8 py-3 rounded-xl font-semibold shadow-lg transition-all transform active:scale-[0.98] disabled:opacity-50"
+                    >
+                        {saving ? <Loader2 size={18} className="animate-spin" /> : saved ? <CheckCircle2 size={18} /> : <Save size={18} />}
+                        {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Template'}
+                    </button>
                     <button 
                         onClick={handleGenerateExercises}
                         className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-brand-200 transition-all transform active:scale-[0.98]"
@@ -297,7 +335,6 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
             </div>
         )}
 
-        {/* VIEW 2: EXERCISES */}
         {view === 'exercises' && (
             <div className="h-full flex flex-col">
                  {exercisesLoading ? (
@@ -312,7 +349,7 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
                             <div className="flex justify-between items-center mb-6">
                                 <div>
                                     <h3 className="text-xl font-bold text-slate-800">Practice Exercises</h3>
-                                    <p className="text-sm text-slate-500">Review before assigning to {studentName}</p>
+                                    <p className="text-sm text-slate-500">Review and edit exercises for this lesson template</p>
                                 </div>
                                 <div className="flex gap-3">
                                     <button 
@@ -494,16 +531,15 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, studentName
                                 )}
                             </div>
 
-                            {/* Assign Bar */}
                             {exercises.length > 0 && (
                                 <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-4 flex justify-center z-10">
                                     <button 
-                                        onClick={handleAssignToStudent}
+                                        onClick={handleSaveTemplate}
                                         disabled={saving}
-                                        className="bg-brand-600 hover:bg-brand-700 text-white font-bold py-3 px-8 rounded-xl flex items-center gap-2 shadow-lg shadow-brand-200 transform active:scale-[0.98] transition-all disabled:opacity-50"
+                                        className="bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 px-8 rounded-xl flex items-center gap-2 shadow-lg transform active:scale-[0.98] transition-all disabled:opacity-50"
                                     >
-                                        {saving ? <Loader2 className="animate-spin" /> : <Send size={18} />}
-                                        {saving ? 'Assigning...' : `Assign to ${studentName}`}
+                                        {saving ? <Loader2 className="animate-spin" /> : saved ? <CheckCircle2 size={18} /> : <Save size={18} />}
+                                        {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Template'}
                                     </button>
                                 </div>
                             )}

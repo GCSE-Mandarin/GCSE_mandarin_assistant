@@ -16,7 +16,7 @@ export default function TutorDashboardPage() {
 
   return (
     <TutorDashboard 
-      onPlanLesson={() => router.push('/tutor/onboarding')}
+      onPlanLesson={() => router.push('/tutor/curriculum')}
       onViewProgress={() => router.push('/tutor/progress')}
       onBack={handleLogout}
       onSettings={() => router.push('/tutor/settings')}

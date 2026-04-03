@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { StudentLessonView } from '@/components/StudentLessonView';
 import { AssignedLesson } from '@/types';
 import { useEffect, useState } from 'react';
-import { getLessons } from '@/lib/services/storage';
+import { getAssignmentsForStudent } from '@/lib/services/storage';
 
 export default function StudentLessonPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -14,12 +14,17 @@ export default function StudentLessonPage({ params }: { params: { id: string } }
   useEffect(() => {
     async function fetchLesson() {
       try {
-        const lessons = await getLessons();
+        const studentId = typeof window !== 'undefined' ? localStorage.getItem('currentUserId') : null;
+        if (!studentId) {
+          console.error("No student ID found");
+          setLoading(false);
+          return;
+        }
+        const lessons = await getAssignmentsForStudent(studentId);
         const found = lessons.find(l => l.id === params.id);
         if (found) {
           setLesson(found);
         } else {
-          // Handle not found
           console.error("Lesson not found");
         }
       } catch (e) {

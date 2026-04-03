@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { AssignedLesson } from '../types';
-import { getLessonsByStudentId } from '@/lib/services/storage';
+import { getAssignmentsForStudent } from '@/lib/services/storage';
 import { BookOpen, CheckCircle, Clock, ArrowLeft, Loader2, RefreshCw, Languages } from 'lucide-react';
 
 interface Props {
@@ -23,7 +23,7 @@ export const StudentDashboard: React.FC<Props> = ({ studentName, onSelectLesson,
     const studentId = typeof window !== 'undefined' ? localStorage.getItem('currentUserId') : null;
     
     if (studentId) {
-      data = await getLessonsByStudentId(studentId);
+      data = await getAssignmentsForStudent(studentId);
     } else {
       console.warn("No student ID found, cannot fetch lessons");
     }

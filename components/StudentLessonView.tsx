@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { AssignedLesson, Exercise } from '../types';
-import { updateLesson } from '@/lib/services/storage';
+import { updateAssignment } from '@/lib/services/storage';
 import { generateImage, generateSpeech, getChatResponse, evaluateAnswer } from '@/lib/services/geminiService';
 import ReactMarkdown from 'react-markdown';
 import { ArrowLeft, CheckCircle2, XCircle, AlertCircle, BookOpen, PenTool, ChevronRight, GraduationCap, Home, ChevronLeft, Volume2, Sparkles, MessageCircle, Send, X, Loader2, Check, ArrowRight, Languages, Eye } from 'lucide-react';
@@ -275,14 +275,12 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
       setScore(averageScore);
       setSubmitted(true);
       
-      // Async update - SAVE USER ANSWERS, SCORES, AND FEEDBACK
-      await updateLesson({
-        ...lesson,
+      await updateAssignment(lesson.id, {
         completed: true,
         score: averageScore,
         userAnswers: answers,
         exerciseScores: exerciseScores,
-        exerciseFeedback: exerciseFeedback
+        exerciseFeedback: exerciseFeedback,
       });
     } else {
       setPracticeIndex(prev => prev + 1);

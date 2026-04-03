@@ -99,12 +99,12 @@ export const TutorDashboard: React.FC<Props> = ({
           <div className="bg-brand-50 w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-brand-100 transition-colors">
             <PenTool className="text-brand-600 w-7 h-7 sm:w-8 sm:h-8" />
           </div>
-          <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">Plan Lessons</h3>
+          <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">Manage Lessons</h3>
           <p className="text-sm sm:text-base text-slate-500 mb-auto">
-            Create new learning modules and generate custom exercises for your students.
+            Create lesson templates and assign them to students.
           </p>
           <div className="mt-4 sm:mt-6 flex items-center text-brand-600 font-semibold text-sm sm:text-base group-hover:translate-x-1 transition-transform">
-            Start Planning →
+            Open Curriculum →
           </div>
         </button>
 

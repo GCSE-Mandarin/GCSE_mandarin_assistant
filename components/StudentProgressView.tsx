@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { getLessons, getVocabProgress, updateLesson } from '@/lib/services/storage';
+import { getAllAssignments, getVocabProgress, updateAssignment } from '@/lib/services/storage';
 import { AssignedLesson, VocabProgress } from '../types';
 import { ArrowLeft, User, BookOpen, CheckCircle2, Clock, Calendar, Loader2, Layers, Eye, X, Check, XCircle, Edit2, Save } from 'lucide-react';
 
@@ -29,11 +29,10 @@ export const StudentProgressView: React.FC<Props> = ({ onBack }) => {
   useEffect(() => {
     const fetchData = async () => {
         setLoading(true);
-        const allLessons = await getLessons();
+        const allLessons = await getAllAssignments();
         const allVocab = await getVocabProgress();
         const stats: Record<string, StudentStats> = {};
 
-        // Process Lessons
         allLessons.forEach(lesson => {
             const name = lesson.studentName;
             if (!stats[name]) {
@@ -122,21 +121,24 @@ export const StudentProgressView: React.FC<Props> = ({ onBack }) => {
     setSaving(true);
     try {
       const overallScore = calculateOverallScore(editedScores);
+
+      await updateAssignment(selectedLesson.id, {
+        tutorAdjustedScores: editedScores,
+        tutorComments: editedComments,
+        tutorOverallComment: editedOverallComment,
+        score: overallScore,
+      });
+
       const updatedLesson: AssignedLesson = {
         ...selectedLesson,
         tutorAdjustedScores: editedScores,
         tutorComments: editedComments,
         tutorOverallComment: editedOverallComment,
-        score: overallScore, // Update overall score
+        score: overallScore,
       };
-
-      await updateLesson(updatedLesson);
-      
-      // Update local state
       setSelectedLesson(updatedLesson);
       
-      // Refresh student data
-      const allLessons = await getLessons();
+      const allLessons = await getAllAssignments();
       const allVocab = await getVocabProgress();
       const stats: Record<string, StudentStats> = {};
 

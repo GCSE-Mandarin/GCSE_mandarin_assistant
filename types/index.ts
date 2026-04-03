@@ -31,26 +31,40 @@ export interface GeneratedContent {
   exercises: Exercise[];
 }
 
-export interface AssignedLesson {
-  id: string;
-  studentName: string;
-  studentId?: string; // Add ID field
+export interface LessonTemplate {
+  pointId: string;
   stageTitle: string;
   topicTitle: string;
   pointDescription: string;
   material: string;
-  originalMaterial?: string; // Original AI generated material before tutor edits
+  originalMaterial?: string;
   exercises: Exercise[];
-  originalExercises?: Exercise[]; // Original AI generated exercises before tutor edits
+  originalExercises?: Exercise[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface AssignedLesson {
+  id: string;
+  pointId: string;
+  studentName: string;
+  studentId?: string;
+  stageTitle: string;
+  topicTitle: string;
+  pointDescription: string;
+  material: string;
+  originalMaterial?: string;
+  exercises: Exercise[];
+  originalExercises?: Exercise[];
   assignedDate: string;
   completed: boolean;
-  score?: number; // Total score (sum of exercise scores or count of correct answers)
-  userAnswers?: string[]; // Added to store student's specific input
-  exerciseScores?: number[]; // Percentage score (0-100) for each exercise
-  exerciseFeedback?: string[]; // AI-generated feedback for each exercise
-  tutorAdjustedScores?: number[]; // Tutor-adjusted scores (0-100) for each exercise
-  tutorComments?: string[]; // Tutor comments for each exercise
-  tutorOverallComment?: string; // Overall comment from tutor for the entire lesson
+  score?: number;
+  userAnswers?: string[];
+  exerciseScores?: number[];
+  exerciseFeedback?: string[];
+  tutorAdjustedScores?: number[];
+  tutorComments?: string[];
+  tutorOverallComment?: string;
 }
 
 export type ViewState = 

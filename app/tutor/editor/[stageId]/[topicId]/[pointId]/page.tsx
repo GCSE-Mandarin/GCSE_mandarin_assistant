@@ -1,20 +1,14 @@
 "use client";
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { LessonEditor } from '@/components/LessonEditor';
 import { CURRICULUM } from '@/data/curriculum';
-import { Stage, Topic, LearningPoint } from '@/types';
 import { Suspense, useMemo } from 'react';
 
 function EditorContent({ params }: { params: { stageId: string, topicId: string, pointId: string } }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const studentName = searchParams.get('student') || 'Student';
-  const studentId = searchParams.get('studentId') || undefined;
-
   const { stageId, topicId, pointId } = params;
 
-  // Find the exact objects
   const data = useMemo(() => {
     const stage = CURRICULUM.find(s => s.id === parseInt(stageId));
     if (!stage) return null;
@@ -28,13 +22,7 @@ function EditorContent({ params }: { params: { stageId: string, topicId: string,
   if (!data) return <div>Curriculum point not found</div>;
 
   const handleBack = () => {
-    const p = new URLSearchParams({
-        student: studentName,
-        stage: stageId
-    });
-    if (studentId) {
-      p.append('studentId', studentId);
-    }
+    const p = new URLSearchParams({ stage: stageId });
     router.push(`/tutor/curriculum?${p.toString()}`);
   };
 
@@ -44,8 +32,6 @@ function EditorContent({ params }: { params: { stageId: string, topicId: string,
       stage={data.stage}
       topic={data.topic}
       point={data.point}
-      studentName={studentName}
-      studentId={studentId}
       onBack={handleBack}
     />
   );

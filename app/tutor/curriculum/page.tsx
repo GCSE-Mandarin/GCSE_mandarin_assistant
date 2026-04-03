@@ -2,35 +2,42 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { StageCurriculum } from '@/components/StageCurriculum';
+import { AssignDialog } from '@/components/AssignDialog';
 import { Stage, Topic, LearningPoint } from '@/types';
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 
 function CurriculumContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const studentName = searchParams.get('student');
-  const stageId = searchParams.get('stage');
-  const studentId = searchParams.get('studentId');
+  const stageParam = searchParams.get('stage');
+  const initialStageId = stageParam ? parseInt(stageParam) : undefined;
 
-  if (!studentName || !stageId) return <div>Missing profile data</div>;
+  const [assignTarget, setAssignTarget] = useState<{ pointId: string; description: string } | null>(null);
 
   const handleSelectPoint = (stage: Stage, topic: Topic, point: LearningPoint) => {
-    const params = new URLSearchParams({
-      student: studentName
-    });
-    if (studentId) {
-      params.append('studentId', studentId);
-    }
-    router.push(`/tutor/editor/${stage.id}/${topic.id}/${point.id}?${params.toString()}`);
+    router.push(`/tutor/editor/${stage.id}/${topic.id}/${point.id}`);
+  };
+
+  const handleAssignPoint = (_stage: Stage, _topic: Topic, point: LearningPoint) => {
+    setAssignTarget({ pointId: point.id, description: point.description });
   };
 
   return (
-    <StageCurriculum 
-      stageId={parseInt(stageId)} 
-      studentName={studentName}
-      onSelectPoint={handleSelectPoint}
-      onBack={() => router.push('/tutor/onboarding')}
-    />
+    <>
+      <StageCurriculum
+        initialStageId={initialStageId}
+        onSelectPoint={handleSelectPoint}
+        onAssignPoint={handleAssignPoint}
+        onBack={() => router.push('/tutor/dashboard')}
+      />
+      {assignTarget && (
+        <AssignDialog
+          pointId={assignTarget.pointId}
+          pointDescription={assignTarget.description}
+          onClose={() => setAssignTarget(null)}
+        />
+      )}
+    </>
   );
 }
 

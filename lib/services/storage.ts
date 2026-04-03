@@ -1,5 +1,5 @@
 import { createClient } from '@/utils/supabase/client';
-import { AssignedLesson, VocabProgress, VocabList, Student } from '@/types';
+import { AssignedLesson, LessonTemplate, VocabProgress, VocabList, Student } from '@/types';
 
 // Create a single client instance for browser operations
 const supabaseInstance = createClient();
@@ -95,7 +95,331 @@ export const updateLesson = async (updatedLesson: AssignedLesson): Promise<void>
   }
 };
 
-// --- VOCABULARY PROGRESS ---
+// =============================================================
+// LESSON TEMPLATES
+// =============================================================
+
+export const getLessonTemplate = async (pointId: string): Promise<LessonTemplate | null> => {
+  const supabase = getSupabase();
+  if (!supabase) return null;
+
+  try {
+    const { data, error } = await supabase
+      .from('lesson_templates')
+      .select('*')
+      .eq('point_id', pointId)
+      .single();
+
+    if (error || !data) return null;
+
+    return {
+      pointId: data.point_id,
+      stageTitle: data.stage_title,
+      topicTitle: data.topic_title,
+      pointDescription: data.point_description,
+      material: data.material,
+      originalMaterial: data.original_material,
+      exercises: data.exercises || [],
+      originalExercises: data.original_exercises,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+  } catch (e) {
+    console.error("Failed to fetch lesson template", e);
+    return null;
+  }
+};
+
+export const getAllLessonTemplates = async (): Promise<LessonTemplate[]> => {
+  const supabase = getSupabase();
+  if (!supabase) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from('lesson_templates')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error("Supabase Fetch Error:", error);
+      return [];
+    }
+
+    return data.map((row: any) => ({
+      pointId: row.point_id,
+      stageTitle: row.stage_title,
+      topicTitle: row.topic_title,
+      pointDescription: row.point_description,
+      material: row.material,
+      originalMaterial: row.original_material,
+      exercises: row.exercises || [],
+      originalExercises: row.original_exercises,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    }));
+  } catch (e) {
+    console.error("Failed to fetch lesson templates", e);
+    return [];
+  }
+};
+
+export const saveLessonTemplate = async (template: LessonTemplate): Promise<void> => {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error("Supabase client not initialized");
+
+  const tutorId = await getTutorId();
+  if (!tutorId) throw new Error("Not logged in as tutor");
+
+  const { error } = await supabase
+    .from('lesson_templates')
+    .upsert({
+      point_id: template.pointId,
+      stage_title: template.stageTitle,
+      topic_title: template.topicTitle,
+      point_description: template.pointDescription,
+      material: template.material,
+      original_material: template.originalMaterial,
+      exercises: template.exercises,
+      original_exercises: template.originalExercises,
+      updated_at: new Date().toISOString(),
+      created_by: tutorId,
+    }, { onConflict: 'point_id' });
+
+  if (error) {
+    console.error("Supabase Save Error:", error);
+    throw new Error("Failed to save lesson template");
+  }
+};
+
+export const updateLessonTemplate = async (template: LessonTemplate): Promise<void> => {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error("Supabase client not initialized");
+
+  const { error } = await supabase
+    .from('lesson_templates')
+    .update({
+      material: template.material,
+      original_material: template.originalMaterial,
+      exercises: template.exercises,
+      original_exercises: template.originalExercises,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('point_id', template.pointId);
+
+  if (error) {
+    console.error("Supabase Update Error:", error);
+    throw new Error("Failed to update lesson template");
+  }
+};
+
+// =============================================================
+// LESSON ASSIGNMENTS
+// =============================================================
+
+export const assignLessonToStudents = async (
+  pointId: string,
+  students: { id: string; name: string }[]
+): Promise<void> => {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error("Supabase client not initialized");
+
+  const tutorId = await getTutorId();
+  if (!tutorId) throw new Error("Not logged in as tutor");
+
+  const rows = students.map(s => ({
+    point_id: pointId,
+    student_id: s.id,
+    student_name: s.name,
+    tutor_id: tutorId,
+    assigned_date: new Date().toISOString(),
+  }));
+
+  const { error } = await supabase
+    .from('lesson_assignments')
+    .upsert(rows, { onConflict: 'point_id,student_id', ignoreDuplicates: true });
+
+  if (error) {
+    console.error("Supabase Assign Error:", error);
+    throw new Error("Failed to assign lesson to students");
+  }
+};
+
+export const unassignLesson = async (pointId: string, studentId: string): Promise<void> => {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error("Supabase client not initialized");
+
+  const { error } = await supabase
+    .from('lesson_assignments')
+    .delete()
+    .eq('point_id', pointId)
+    .eq('student_id', studentId);
+
+  if (error) {
+    console.error("Supabase Unassign Error:", error);
+    throw new Error("Failed to unassign lesson");
+  }
+};
+
+export const getAssignmentsForStudent = async (studentId: string): Promise<AssignedLesson[]> => {
+  const supabase = getSupabase();
+  if (!supabase) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from('lesson_assignments')
+      .select('*, lesson_templates(*)')
+      .eq('student_id', studentId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error("Supabase Fetch Error:", error);
+      return [];
+    }
+
+    return data.map((row: any) => {
+      const t = row.lesson_templates;
+      return {
+        id: row.id,
+        pointId: row.point_id,
+        studentName: row.student_name,
+        studentId: row.student_id,
+        stageTitle: t?.stage_title || '',
+        topicTitle: t?.topic_title || '',
+        pointDescription: t?.point_description || '',
+        material: t?.material || '',
+        originalMaterial: t?.original_material,
+        exercises: t?.exercises || [],
+        originalExercises: t?.original_exercises,
+        assignedDate: row.assigned_date || row.created_at,
+        completed: row.completed || false,
+        score: row.score,
+        userAnswers: row.user_answers,
+        exerciseScores: row.exercise_scores,
+        exerciseFeedback: row.exercise_feedback,
+        tutorAdjustedScores: row.tutor_adjusted_scores,
+        tutorComments: row.tutor_comments,
+        tutorOverallComment: row.tutor_overall_comment,
+      } as AssignedLesson;
+    });
+  } catch (e) {
+    console.error("Failed to fetch assignments for student", e);
+    return [];
+  }
+};
+
+export const getAssignmentsByPointId = async (
+  pointId: string
+): Promise<{ studentId: string; studentName: string }[]> => {
+  const supabase = getSupabase();
+  if (!supabase) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from('lesson_assignments')
+      .select('student_id, student_name')
+      .eq('point_id', pointId);
+
+    if (error) {
+      console.error("Supabase Fetch Error:", error);
+      return [];
+    }
+
+    return data.map((row: any) => ({
+      studentId: row.student_id,
+      studentName: row.student_name,
+    }));
+  } catch (e) {
+    console.error("Failed to fetch assignments by point", e);
+    return [];
+  }
+};
+
+export const updateAssignment = async (
+  assignmentId: string,
+  updates: {
+    completed?: boolean;
+    score?: number;
+    userAnswers?: string[];
+    exerciseScores?: number[];
+    exerciseFeedback?: string[];
+    tutorAdjustedScores?: number[];
+    tutorComments?: string[];
+    tutorOverallComment?: string;
+  }
+): Promise<void> => {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error("Supabase client not initialized");
+
+  const row: Record<string, any> = {};
+  if (updates.completed !== undefined) row.completed = updates.completed;
+  if (updates.score !== undefined) row.score = updates.score;
+  if (updates.userAnswers !== undefined) row.user_answers = updates.userAnswers;
+  if (updates.exerciseScores !== undefined) row.exercise_scores = updates.exerciseScores;
+  if (updates.exerciseFeedback !== undefined) row.exercise_feedback = updates.exerciseFeedback;
+  if (updates.tutorAdjustedScores !== undefined) row.tutor_adjusted_scores = updates.tutorAdjustedScores;
+  if (updates.tutorComments !== undefined) row.tutor_comments = updates.tutorComments;
+  if (updates.tutorOverallComment !== undefined) row.tutor_overall_comment = updates.tutorOverallComment;
+
+  const { error } = await supabase
+    .from('lesson_assignments')
+    .update(row)
+    .eq('id', assignmentId);
+
+  if (error) {
+    console.error("Supabase Update Error:", error);
+    throw new Error("Failed to update assignment");
+  }
+};
+
+export const getAllAssignments = async (): Promise<AssignedLesson[]> => {
+  const supabase = getSupabase();
+  if (!supabase) return [];
+
+  try {
+    const { data, error } = await supabase
+      .from('lesson_assignments')
+      .select('*, lesson_templates(*)')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error("Supabase Fetch Error:", error);
+      return [];
+    }
+
+    return data.map((row: any) => {
+      const t = row.lesson_templates;
+      return {
+        id: row.id,
+        pointId: row.point_id,
+        studentName: row.student_name,
+        studentId: row.student_id,
+        stageTitle: t?.stage_title || '',
+        topicTitle: t?.topic_title || '',
+        pointDescription: t?.point_description || '',
+        material: t?.material || '',
+        originalMaterial: t?.original_material,
+        exercises: t?.exercises || [],
+        originalExercises: t?.original_exercises,
+        assignedDate: row.assigned_date || row.created_at,
+        completed: row.completed || false,
+        score: row.score,
+        userAnswers: row.user_answers,
+        exerciseScores: row.exercise_scores,
+        exerciseFeedback: row.exercise_feedback,
+        tutorAdjustedScores: row.tutor_adjusted_scores,
+        tutorComments: row.tutor_comments,
+        tutorOverallComment: row.tutor_overall_comment,
+      } as AssignedLesson;
+    });
+  } catch (e) {
+    console.error("Failed to fetch all assignments", e);
+    return [];
+  }
+};
+
+// =============================================================
+// VOCABULARY PROGRESS
+// =============================================================
 export const getVocabProgress = async (studentId?: string): Promise<VocabProgress[]> => {
   const supabase = getSupabase();
   if (!supabase) return [];
