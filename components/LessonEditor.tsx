@@ -3,7 +3,7 @@ import { Stage, Topic, LearningPoint, Exercise, LessonTemplate } from '../types'
 import { generateLearningMaterial, generateExercises } from '@/lib/services/geminiService';
 import { getLessonTemplate, saveLessonTemplate } from '@/lib/services/storage';
 import ReactMarkdown from 'react-markdown';
-import { Loader2, Save, ArrowLeft, RefreshCw, PenLine, Plus, Minus, Trash2, X, ChevronRight, BookOpen, Dumbbell, Languages, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Loader2, Save, ArrowLeft, RefreshCw, PenLine, Plus, Minus, Trash2, X, ChevronRight, ChevronLeft, BookOpen, Dumbbell, Languages, AlertTriangle, CheckCircle2, Scissors, Merge, FileText } from 'lucide-react';
 
 interface Props {
   stage: Stage;
@@ -21,9 +21,11 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack }) =
   const [fontSizeIndex, setFontSizeIndex] = useState(1);
   
   const [materialLoading, setMaterialLoading] = useState(true);
-  const [material, setMaterial] = useState('');
+  const [pages, setPages] = useState<string[]>(['']);
   const [originalMaterial, setOriginalMaterial] = useState('');
   const [editMaterialMode, setEditMaterialMode] = useState(false);
+  const [previewPage, setPreviewPage] = useState(0);
+  const [showPreview, setShowPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   const [exercisesLoading, setExercisesLoading] = useState(false);
@@ -43,7 +45,7 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack }) =
       try {
         const existing = await getLessonTemplate(point.id);
         if (existing && mounted) {
-          setMaterial(existing.material);
+          setPages(existing.pages.length > 0 ? existing.pages : [existing.material || '']);
           setOriginalMaterial(existing.originalMaterial || existing.material);
           setExercises(existing.exercises || []);
           setOriginalExercises(existing.originalExercises || []);
@@ -55,7 +57,7 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack }) =
         const data = await generateLearningMaterial(stage.title, topic.title, point.description);
         if (mounted) {
           setOriginalMaterial(data);
-          setMaterial(data);
+          setPages([data]);
           setOriginalExercises([]);
           setExercises([]);
           setMaterialLoading(false);
@@ -74,6 +76,8 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack }) =
     loadOrGenerate();
     return () => { mounted = false; };
   }, [stage, topic, point]);
+
+  const material = pages.join('\n---\n');
 
   const handleGenerateExercises = async () => {
     setView('exercises');
@@ -144,7 +148,7 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack }) =
     try {
       const data = await generateLearningMaterial(stage.title, topic.title, point.description);
       setOriginalMaterial(data);
-      setMaterial(data);
+      setPages([data]);
       setExercises([]);
       setOriginalExercises([]);
       setMaterialLoading(false);
@@ -158,6 +162,45 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack }) =
     }
   };
 
+  // Page management
+  const updatePage = (index: number, content: string) => {
+    const updated = [...pages];
+    updated[index] = content;
+    setPages(updated);
+  };
+
+  const addPageAfter = (index: number) => {
+    const updated = [...pages];
+    updated.splice(index + 1, 0, '');
+    setPages(updated);
+  };
+
+  const removePage = (index: number) => {
+    if (pages.length <= 1) return;
+    const updated = [...pages];
+    updated.splice(index, 1);
+    setPages(updated);
+  };
+
+  const mergeWithPrevious = (index: number) => {
+    if (index === 0) return;
+    const updated = [...pages];
+    updated[index - 1] = updated[index - 1] + '\n\n' + updated[index];
+    updated.splice(index, 1);
+    setPages(updated);
+  };
+
+  const splitPage = (index: number) => {
+    const content = pages[index];
+    const lines = content.split('\n');
+    const mid = Math.ceil(lines.length / 2);
+    const first = lines.slice(0, mid).join('\n');
+    const second = lines.slice(mid).join('\n');
+    const updated = [...pages];
+    updated.splice(index, 1, first, second);
+    setPages(updated);
+  };
+
   const handleSaveTemplate = async () => {
     setSaving(true);
     const template: LessonTemplate = {
@@ -165,6 +208,7 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack }) =
       stageTitle: stage.title,
       topicTitle: topic.title,
       pointDescription: point.description,
+      pages,
       material,
       originalMaterial,
       exercises,
@@ -210,7 +254,7 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack }) =
         <h3 className="text-xl font-semibold text-slate-700">
           {isExistingTemplate ? 'Loading Template...' : 'Generating Lesson...'}
         </h3>
-        <p className="text-slate-500 mt-2">"{point.description}"</p>
+        <p className="text-slate-500 mt-2">&quot;{point.description}&quot;</p>
       </div>
     );
   }
@@ -262,36 +306,49 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack }) =
         {view === 'material' && (
             <div className="h-full flex flex-col">
                 <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
-                    <div className="max-w-3xl mx-auto bg-white shadow-sm border border-slate-200 rounded-2xl p-8 min-h-full">
-                            <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                    <div className="max-w-3xl mx-auto">
+                        <div className="flex justify-between items-center mb-6 bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+                            <div className="flex items-center gap-3">
                                 <h3 className="text-lg font-bold text-slate-800">Learning Material</h3>
-                                <div className="flex items-center gap-4">
-                                    <button
-                                        onClick={regenerateMaterial}
-                                        className="p-2 text-slate-400 hover:text-brand-600 transition-colors"
-                                        title="Regenerate material with AI"
+                                <span className="bg-slate-100 text-slate-600 text-xs font-bold px-2 py-1 rounded-full">
+                                    {pages.length} {pages.length === 1 ? 'page' : 'pages'}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={regenerateMaterial}
+                                    className="p-2 text-slate-400 hover:text-brand-600 transition-colors"
+                                    title="Regenerate material with AI"
+                                >
+                                    <RefreshCw size={18} />
+                                </button>
+                                <div className="flex items-center bg-slate-100 rounded-lg p-1">
+                                    <button 
+                                        onClick={() => setFontSizeIndex(Math.max(0, fontSizeIndex - 1))}
+                                        disabled={fontSizeIndex === 0}
+                                        className="p-1 text-slate-500 hover:text-slate-800 disabled:opacity-30 transition-colors"
+                                        title="Decrease font size"
                                     >
-                                        <RefreshCw size={18} />
+                                        <Minus size={16} />
                                     </button>
-                                    <div className="flex items-center bg-slate-100 rounded-lg p-1">
-                                        <button 
-                                            onClick={() => setFontSizeIndex(Math.max(0, fontSizeIndex - 1))}
-                                            disabled={fontSizeIndex === 0}
-                                            className="p-1 text-slate-500 hover:text-slate-800 disabled:opacity-30 disabled:hover:text-slate-500 transition-colors"
-                                            title="Decrease font size"
-                                        >
-                                            <Minus size={16} />
-                                        </button>
-                                        <span className="text-xs font-semibold text-slate-600 px-2 select-none">Aa</span>
-                                        <button 
-                                            onClick={() => setFontSizeIndex(Math.min(fontSizes.length - 1, fontSizeIndex + 1))}
-                                            disabled={fontSizeIndex === fontSizes.length - 1}
-                                            className="p-1 text-slate-500 hover:text-slate-800 disabled:opacity-30 disabled:hover:text-slate-500 transition-colors"
-                                            title="Increase font size"
-                                        >
-                                            <Plus size={16} />
-                                        </button>
-                                    </div>
+                                    <span className="text-xs font-semibold text-slate-600 px-2 select-none">Aa</span>
+                                    <button 
+                                        onClick={() => setFontSizeIndex(Math.min(fontSizes.length - 1, fontSizeIndex + 1))}
+                                        disabled={fontSizeIndex === fontSizes.length - 1}
+                                        className="p-1 text-slate-500 hover:text-slate-800 disabled:opacity-30 transition-colors"
+                                        title="Increase font size"
+                                    >
+                                        <Plus size={16} />
+                                    </button>
+                                </div>
+                                <button 
+                                    onClick={() => { setShowPreview(!showPreview); setPreviewPage(0); }}
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${showPreview ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
+                                >
+                                    <FileText size={16} />
+                                    {showPreview ? 'Edit Pages' : 'Preview'}
+                                </button>
+                                {!showPreview && (
                                     <button 
                                         onClick={() => setEditMaterialMode(!editMaterialMode)}
                                         className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${editMaterialMode ? 'bg-brand-600 text-white' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
@@ -299,18 +356,107 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack }) =
                                         {editMaterialMode ? <Save size={16} /> : <PenLine size={16} />}
                                         {editMaterialMode ? 'Done' : 'Edit'}
                                     </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {showPreview ? (
+                            <div className="bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
+                                <div className="p-6 sm:p-8 md:p-10 min-h-[400px]">
+                                    <div className={`prose prose-slate prose-headings:font-bold prose-p:text-slate-600 prose-li:text-slate-600 max-w-none transition-all duration-200 ${fontSizes[fontSizeIndex]}`}>
+                                        <ReactMarkdown>{pages[previewPage] || ''}</ReactMarkdown>
+                                    </div>
+                                </div>
+                                <div className="border-t border-slate-200 p-4 flex justify-between items-center bg-slate-50">
+                                    <button
+                                        onClick={() => setPreviewPage(Math.max(0, previewPage - 1))}
+                                        disabled={previewPage === 0}
+                                        className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm text-slate-600 hover:bg-white disabled:opacity-30 transition-all"
+                                    >
+                                        <ChevronLeft size={18} /> Previous
+                                    </button>
+                                    <span className="text-sm font-bold text-slate-500">
+                                        Page {previewPage + 1} of {pages.length}
+                                    </span>
+                                    <button
+                                        onClick={() => setPreviewPage(Math.min(pages.length - 1, previewPage + 1))}
+                                        disabled={previewPage >= pages.length - 1}
+                                        className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm text-slate-600 hover:bg-white disabled:opacity-30 transition-all"
+                                    >
+                                        Next <ChevronRight size={18} />
+                                    </button>
                                 </div>
                             </div>
-
-                        {editMaterialMode ? (
-                            <textarea 
-                                className="w-full h-[600px] p-4 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none font-mono text-sm leading-relaxed"
-                                value={material}
-                                onChange={(e) => setMaterial(e.target.value)}
-                            />
                         ) : (
-                            <div className={`prose prose-slate prose-headings:font-bold prose-p:text-slate-600 prose-li:text-slate-600 max-w-none transition-all duration-200 ${fontSizes[fontSizeIndex]}`}>
-                                <ReactMarkdown>{material}</ReactMarkdown>
+                            <div className="space-y-4">
+                                {pages.map((page, idx) => (
+                                    <div key={idx} className="bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
+                                        <div className="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-200">
+                                            <span className="text-sm font-bold text-slate-500 flex items-center gap-2">
+                                                <FileText size={14} /> Page {idx + 1}
+                                            </span>
+                                            <div className="flex items-center gap-1">
+                                                {idx > 0 && (
+                                                    <button
+                                                        onClick={() => mergeWithPrevious(idx)}
+                                                        className="p-1.5 text-slate-400 hover:text-amber-600 transition-colors rounded-md hover:bg-amber-50"
+                                                        title="Merge with previous page"
+                                                    >
+                                                        <Merge size={14} />
+                                                    </button>
+                                                )}
+                                                {page.split('\n').length > 2 && (
+                                                    <button
+                                                        onClick={() => splitPage(idx)}
+                                                        className="p-1.5 text-slate-400 hover:text-blue-600 transition-colors rounded-md hover:bg-blue-50"
+                                                        title="Split page in half"
+                                                    >
+                                                        <Scissors size={14} />
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => addPageAfter(idx)}
+                                                    className="p-1.5 text-slate-400 hover:text-green-600 transition-colors rounded-md hover:bg-green-50"
+                                                    title="Add page after"
+                                                >
+                                                    <Plus size={14} />
+                                                </button>
+                                                {pages.length > 1 && (
+                                                    <button
+                                                        onClick={() => removePage(idx)}
+                                                        className="p-1.5 text-slate-400 hover:text-red-500 transition-colors rounded-md hover:bg-red-50"
+                                                        title="Delete page"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="p-6">
+                                            {editMaterialMode ? (
+                                                <textarea 
+                                                    className="w-full min-h-[200px] p-4 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none font-mono text-sm leading-relaxed resize-y"
+                                                    value={page}
+                                                    onChange={(e) => updatePage(idx, e.target.value)}
+                                                    rows={Math.max(6, page.split('\n').length + 2)}
+                                                />
+                                            ) : (
+                                                <div className={`prose prose-slate prose-headings:font-bold prose-p:text-slate-600 prose-li:text-slate-600 max-w-none transition-all duration-200 ${fontSizes[fontSizeIndex]}`}>
+                                                    <ReactMarkdown>{page}</ReactMarkdown>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+
+                                {!editMaterialMode && (
+                                    <button
+                                        onClick={() => addPageAfter(pages.length - 1)}
+                                        className="w-full py-4 border-2 border-dashed border-slate-300 rounded-xl text-slate-500 hover:border-brand-400 hover:text-brand-600 hover:bg-brand-50 font-medium transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <Plus size={20} /> Add New Page
+                                    </button>
+                                )}
                             </div>
                         )}
                     </div>

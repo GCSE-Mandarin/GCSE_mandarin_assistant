@@ -22,12 +22,17 @@ function CurriculumContent() {
     setAssignTarget({ pointId: point.id, description: point.description });
   };
 
+  const handlePresentPoint = (point: LearningPoint) => {
+    router.push(`/tutor/present/${encodeURIComponent(point.id)}`);
+  };
+
   return (
     <>
       <StageCurriculum
         initialStageId={initialStageId}
         onSelectPoint={handleSelectPoint}
         onAssignPoint={handleAssignPoint}
+        onPresentPoint={handlePresentPoint}
         onBack={() => router.push('/tutor/dashboard')}
       />
       {assignTarget && (

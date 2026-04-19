@@ -99,6 +99,14 @@ export const updateLesson = async (updatedLesson: AssignedLesson): Promise<void>
 // LESSON TEMPLATES
 // =============================================================
 
+const parsePages = (row: any): string[] => {
+  const pages = row.pages;
+  if (Array.isArray(pages) && pages.length > 0) return pages;
+  const mat = row.material || '';
+  if (!mat) return [];
+  return mat.split('---').map((s: string) => s.trim()).filter((s: string) => s.length > 0);
+};
+
 export const getLessonTemplate = async (pointId: string): Promise<LessonTemplate | null> => {
   const supabase = getSupabase();
   if (!supabase) return null;
@@ -112,12 +120,14 @@ export const getLessonTemplate = async (pointId: string): Promise<LessonTemplate
 
     if (error || !data) return null;
 
+    const pages = parsePages(data);
     return {
       pointId: data.point_id,
       stageTitle: data.stage_title,
       topicTitle: data.topic_title,
       pointDescription: data.point_description,
-      material: data.material,
+      pages,
+      material: pages.join('\n---\n'),
       originalMaterial: data.original_material,
       exercises: data.exercises || [],
       originalExercises: data.original_exercises,
@@ -145,18 +155,22 @@ export const getAllLessonTemplates = async (): Promise<LessonTemplate[]> => {
       return [];
     }
 
-    return data.map((row: any) => ({
-      pointId: row.point_id,
-      stageTitle: row.stage_title,
-      topicTitle: row.topic_title,
-      pointDescription: row.point_description,
-      material: row.material,
-      originalMaterial: row.original_material,
-      exercises: row.exercises || [],
-      originalExercises: row.original_exercises,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-    }));
+    return data.map((row: any) => {
+      const pages = parsePages(row);
+      return {
+        pointId: row.point_id,
+        stageTitle: row.stage_title,
+        topicTitle: row.topic_title,
+        pointDescription: row.point_description,
+        pages,
+        material: pages.join('\n---\n'),
+        originalMaterial: row.original_material,
+        exercises: row.exercises || [],
+        originalExercises: row.original_exercises,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      };
+    });
   } catch (e) {
     console.error("Failed to fetch lesson templates", e);
     return [];
@@ -177,7 +191,8 @@ export const saveLessonTemplate = async (template: LessonTemplate): Promise<void
       stage_title: template.stageTitle,
       topic_title: template.topicTitle,
       point_description: template.pointDescription,
-      material: template.material,
+      pages: template.pages,
+      material: template.pages.join('\n---\n'),
       original_material: template.originalMaterial,
       exercises: template.exercises,
       original_exercises: template.originalExercises,
@@ -198,7 +213,8 @@ export const updateLessonTemplate = async (template: LessonTemplate): Promise<vo
   const { error } = await supabase
     .from('lesson_templates')
     .update({
-      material: template.material,
+      pages: template.pages,
+      material: template.pages.join('\n---\n'),
       original_material: template.originalMaterial,
       exercises: template.exercises,
       original_exercises: template.originalExercises,
@@ -278,6 +294,7 @@ export const getAssignmentsForStudent = async (studentId: string): Promise<Assig
 
     return data.map((row: any) => {
       const t = row.lesson_templates;
+      const pages = t ? parsePages(t) : [];
       return {
         id: row.id,
         pointId: row.point_id,
@@ -286,7 +303,8 @@ export const getAssignmentsForStudent = async (studentId: string): Promise<Assig
         stageTitle: t?.stage_title || '',
         topicTitle: t?.topic_title || '',
         pointDescription: t?.point_description || '',
-        material: t?.material || '',
+        pages,
+        material: pages.join('\n---\n'),
         originalMaterial: t?.original_material,
         exercises: t?.exercises || [],
         originalExercises: t?.original_exercises,
@@ -388,6 +406,7 @@ export const getAllAssignments = async (): Promise<AssignedLesson[]> => {
 
     return data.map((row: any) => {
       const t = row.lesson_templates;
+      const pages = t ? parsePages(t) : [];
       return {
         id: row.id,
         pointId: row.point_id,
@@ -396,7 +415,8 @@ export const getAllAssignments = async (): Promise<AssignedLesson[]> => {
         stageTitle: t?.stage_title || '',
         topicTitle: t?.topic_title || '',
         pointDescription: t?.point_description || '',
-        material: t?.material || '',
+        pages,
+        material: pages.join('\n---\n'),
         originalMaterial: t?.original_material,
         exercises: t?.exercises || [],
         originalExercises: t?.original_exercises,

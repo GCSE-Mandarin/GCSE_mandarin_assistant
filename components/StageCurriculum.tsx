@@ -2,16 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Stage, Topic, LearningPoint, LessonTemplate } from '../types';
 import { CURRICULUM } from '../data/curriculum';
 import { getAllLessonTemplates } from '@/lib/services/storage';
-import { BookOpen, CheckCircle2, ChevronRight, ArrowLeft, Users, Loader2 } from 'lucide-react';
+import { BookOpen, CheckCircle2, ChevronRight, ArrowLeft, Users, Loader2, Presentation } from 'lucide-react';
 
 interface Props {
   initialStageId?: number;
   onSelectPoint: (stage: Stage, topic: Topic, point: LearningPoint) => void;
   onAssignPoint: (stage: Stage, topic: Topic, point: LearningPoint) => void;
+  onPresentPoint: (point: LearningPoint) => void;
   onBack: () => void;
 }
 
-export const StageCurriculum: React.FC<Props> = ({ initialStageId, onSelectPoint, onAssignPoint, onBack }) => {
+export const StageCurriculum: React.FC<Props> = ({ initialStageId, onSelectPoint, onAssignPoint, onPresentPoint, onBack }) => {
   const [activeStageId, setActiveStageId] = useState<number | null>(initialStageId ?? null);
   const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
   const [templates, setTemplates] = useState<Set<string>>(new Set());
@@ -112,12 +113,20 @@ export const StageCurriculum: React.FC<Props> = ({ initialStageId, onSelectPoint
                                       {pt.description}
                                     </button>
                                     {exists && (
-                                      <button
-                                        onClick={() => onAssignPoint(stage, topic, pt)}
-                                        className="flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-lg bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors flex-shrink-0"
-                                      >
-                                        <Users size={14} /> Assign
-                                      </button>
+                                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                                        <button
+                                          onClick={() => onPresentPoint(pt)}
+                                          className="flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                                        >
+                                          <Presentation size={14} /> Present
+                                        </button>
+                                        <button
+                                          onClick={() => onAssignPoint(stage, topic, pt)}
+                                          className="flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-lg bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors"
+                                        >
+                                          <Users size={14} /> Assign
+                                        </button>
+                                      </div>
                                     )}
                                   </div>
                                 );

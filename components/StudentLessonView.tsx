@@ -91,86 +91,11 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
 
   // Audio State
 
-  // Parse material into sections - split into smaller chunks (one point or example per page)
   const sections = useMemo(() => {
+    if (lesson.pages && lesson.pages.length > 0) return lesson.pages;
     if (!lesson.material) return [];
-    
-    // First split by major sections (---)
-    let majorSections: string[] = [];
-    if (lesson.material.includes('---')) {
-      majorSections = lesson.material
-        .split('---')
-        .map(s => s.trim())
-        .filter(s => s.length > 0);
-    } else {
-    const raw = `\n${lesson.material}`;
-    const parts = raw.split(/\n(?=#{1,3}\s)/g).filter(p => p.trim().length > 0);
-      majorSections = parts.length > 0 ? parts : [lesson.material];
-    }
-    
-    // Now split each major section into smaller chunks
-    const chunks: string[] = [];
-    
-    majorSections.forEach(section => {
-      const lines = section.split('\n');
-      let currentChunk = '';
-      let inList = false;
-      
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const trimmed = line.trim();
-        
-        // Check if this is a bullet point or list item
-        const isBullet = /^[-*•]\s/.test(trimmed) || /^\d+\.\s/.test(trimmed);
-        // Check if this looks like an example (contains Chinese characters with pinyin pattern)
-        const isExample = /[\u4e00-\u9fa5].*\([a-zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]+.*\)/.test(trimmed) || 
-                         /^[*•-]\s.*[\u4e00-\u9fa5]/.test(trimmed) ||
-                         /^Example|^例子|^For example/i.test(trimmed);
-        
-        // If we hit a new bullet/example and have content, save current chunk
-        if ((isBullet || isExample) && currentChunk.trim()) {
-          chunks.push(currentChunk.trim());
-          currentChunk = line + '\n';
-          inList = true;
-        } 
-        // If we hit a header and have content, save current chunk
-        else if (/^#{1,3}\s/.test(trimmed) && currentChunk.trim()) {
-          chunks.push(currentChunk.trim());
-          currentChunk = line + '\n';
-          inList = false;
-        }
-        // If we hit a blank line after a list item, save that chunk
-        else if (trimmed === '' && inList && currentChunk.trim()) {
-          chunks.push(currentChunk.trim());
-          currentChunk = '';
-          inList = false;
-        }
-        // Otherwise, add to current chunk
-        else {
-          currentChunk += line + '\n';
-          if (isBullet || isExample) {
-            inList = true;
-          }
-        }
-      }
-      
-      // Don't forget the last chunk
-      if (currentChunk.trim()) {
-        chunks.push(currentChunk.trim());
-      }
-    });
-    
-    // If no chunks were created (no bullets/examples found), split by paragraphs
-    if (chunks.length === 0) {
-      majorSections.forEach(section => {
-        const paragraphs = section.split(/\n\s*\n/).filter(p => p.trim().length > 0);
-        chunks.push(...paragraphs);
-      });
-    }
-    
-    // If still no chunks, just use the original sections
-    return chunks.length > 0 ? chunks : majorSections;
-  }, [lesson.material]);
+    return lesson.material.split('---').map(s => s.trim()).filter(s => s.length > 0);
+  }, [lesson.pages, lesson.material]);
 
   // Reset visuals when section changes
   useEffect(() => {

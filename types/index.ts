@@ -36,6 +36,7 @@ export interface LessonTemplate {
   stageTitle: string;
   topicTitle: string;
   pointDescription: string;
+  pages: string[];
   material: string;
   originalMaterial?: string;
   exercises: Exercise[];
@@ -52,6 +53,7 @@ export interface AssignedLesson {
   stageTitle: string;
   topicTitle: string;
   pointDescription: string;
+  pages: string[];
   material: string;
   originalMaterial?: string;
   exercises: Exercise[];
