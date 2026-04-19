@@ -1,8 +1,8 @@
 
 import React, { useEffect, useState } from 'react';
-import { getAllAssignments, getVocabProgress, updateAssignment } from '@/lib/services/storage';
-import { AssignedLesson, VocabProgress } from '../types';
-import { ArrowLeft, User, BookOpen, CheckCircle2, Clock, Calendar, Loader2, Layers, Eye, X, Check, XCircle, Edit2, Save } from 'lucide-react';
+import { getAllAssignments, getVocabProgress, updateAssignment, createStudent, getStudents } from '@/lib/services/storage';
+import { AssignedLesson, VocabProgress, Student } from '../types';
+import { ArrowLeft, User, BookOpen, CheckCircle2, Clock, Calendar, Loader2, Layers, Eye, X, Check, XCircle, Edit2, Save, UserPlus } from 'lucide-react';
 
 interface Props {
   onBack: () => void;
@@ -25,6 +25,12 @@ export const StudentProgressView: React.FC<Props> = ({ onBack }) => {
   const [editedComments, setEditedComments] = useState<string[]>([]);
   const [editedOverallComment, setEditedOverallComment] = useState<string>('');
   const [saving, setSaving] = useState(false);
+
+  // Add student
+  const [showAddStudent, setShowAddStudent] = useState(false);
+  const [newStudentName, setNewStudentName] = useState('');
+  const [addingStudent, setAddingStudent] = useState(false);
+  const [addStudentError, setAddStudentError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -203,16 +209,53 @@ export const StudentProgressView: React.FC<Props> = ({ onBack }) => {
     }
   };
 
+  const handleAddStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const name = newStudentName.trim();
+    if (!name) return;
+    setAddingStudent(true);
+    setAddStudentError(null);
+    try {
+      const existing = await getStudents();
+      if (existing.some(s => s.name.toLowerCase() === name.toLowerCase())) {
+        setAddStudentError('A student with this name already exists.');
+        setAddingStudent(false);
+        return;
+      }
+      const created = await createStudent(name);
+      if (!created) throw new Error('Failed to create student');
+      // Add empty entry to studentData so student appears immediately
+      setStudentData(prev => ({
+        ...prev,
+        [created.name]: { totalLessons: 0, completedLessons: 0, averageScore: 0, lessons: [], vocab: {} },
+      }));
+      setNewStudentName('');
+      setShowAddStudent(false);
+    } catch (err) {
+      setAddStudentError('Failed to add student. Please try again.');
+    } finally {
+      setAddingStudent(false);
+    }
+  };
+
   return (
     <div className="h-full bg-slate-50 flex flex-col relative">
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center shrink-0">
-        <button 
-          onClick={onBack}
-          className="mr-4 p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={onBack}
+            className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <h1 className="text-xl font-bold text-slate-800">Student Progress Reports</h1>
+        </div>
+        <button
+          onClick={() => { setShowAddStudent(true); setNewStudentName(''); setAddStudentError(null); }}
+          className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-lg transition-colors"
         >
-          <ArrowLeft size={20} />
+          <UserPlus size={16} /> Add Student
         </button>
-        <h1 className="text-xl font-bold text-slate-800">Student Progress Reports</h1>
       </header>
 
       <main className="flex-1 p-6 max-w-6xl mx-auto w-full overflow-y-auto">
@@ -559,6 +602,63 @@ export const StudentProgressView: React.FC<Props> = ({ onBack }) => {
                     )}
                 </div>
              </div>
+        </div>
+      )}
+
+      {/* Add Student Modal */}
+      {showAddStudent && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="bg-brand-100 p-2 rounded-lg">
+                  <UserPlus size={20} className="text-brand-600" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-800">Add New Student</h3>
+              </div>
+              <button
+                onClick={() => setShowAddStudent(false)}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full p-1 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleAddStudent} className="p-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Student Name</label>
+                <input
+                  type="text"
+                  value={newStudentName}
+                  onChange={e => { setNewStudentName(e.target.value); setAddStudentError(null); }}
+                  placeholder="e.g. Alex Smith"
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all"
+                  autoFocus
+                  required
+                />
+                {addStudentError && (
+                  <p className="mt-1.5 text-sm text-red-600">{addStudentError}</p>
+                )}
+              </div>
+              <div className="flex justify-end gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowAddStudent(false)}
+                  className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium text-sm"
+                  disabled={addingStudent}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={addingStudent || !newStudentName.trim()}
+                  className="flex items-center gap-2 px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium text-sm transition-colors disabled:opacity-50"
+                >
+                  {addingStudent ? <Loader2 size={15} className="animate-spin" /> : <UserPlus size={15} />}
+                  {addingStudent ? 'Adding...' : 'Add Student'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

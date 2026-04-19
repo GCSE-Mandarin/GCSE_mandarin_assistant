@@ -4,18 +4,18 @@ export interface LearningPoint {
   description: string;
 }
 
-export interface Topic {
+export interface Subtopic {
   id: string;
   title: string;
   points: LearningPoint[];
 }
 
-export interface Stage {
+export interface Topic {
   id: number;
   title: string;
   duration: string;
   goal: string;
-  topics: Topic[];
+  topics: Subtopic[];
 }
 
 export interface Exercise {

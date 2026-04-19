@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Stage, Topic, LearningPoint, Exercise, LessonTemplate } from '../types';
+import { Topic, Subtopic, LearningPoint, Exercise, LessonTemplate } from '../types';
 import { generateLearningMaterial, generateExercises } from '@/lib/services/geminiService';
 import { getLessonTemplate, saveLessonTemplate } from '@/lib/services/storage';
 import ReactMarkdown from 'react-markdown';
 import { Loader2, Save, ArrowLeft, RefreshCw, PenLine, Plus, Minus, Trash2, X, ChevronRight, ChevronLeft, BookOpen, Dumbbell, Languages, AlertTriangle, CheckCircle2, Scissors, Merge, FileText } from 'lucide-react';
 
 interface Props {
-  stage: Stage;
-  topic: Topic;
+  stage: Topic;
+  topic: Subtopic;
   point: LearningPoint;
   onBack: () => void;
 }

@@ -1,10 +1,10 @@
 
-import { Stage } from '../types';
+import { Topic } from '../types';
 
-export const CURRICULUM: Stage[] = [
+export const CURRICULUM: Topic[] = [
   {
     id: 1,
-    title: "Stage 1: Foundations (A1.1)",
+    title: "Topic 1: Everyday activities",
     duration: "0–2 months",
     goal: "Build sound–symbol awareness, 4 tones, pinyin decoding, 100 basic characters.",
     topics: [
@@ -29,17 +29,6 @@ export const CURRICULUM: Stage[] = [
         ]
       },
       {
-        id: "s1-vocabulary",
-        title: "Survival vocabulary (50–100 words)",
-        points: [
-          { id: "s1-greetings", description: "Greetings: 你好, 再见, 谢谢, 不客气" },
-          { id: "s1-intro", description: "Self-intro: 我叫…, 我是英国人。" },
-          { id: "s1-numbers", description: "Numbers 1–100" },
-          { id: "s1-dates", description: "Days, months, dates" },
-          { id: "s1-family", description: "Family: 爸爸, 妈妈, 哥哥, 姐姐" }
-        ]
-      },
-      {
         id: "s1-grammar",
         title: "Grammar foundations",
         points: [
@@ -60,19 +49,18 @@ export const CURRICULUM: Stage[] = [
         ]
       },
       {
-        id: "s1-everyday",
-        title: "Everyday activities",
+        id: "s1-comprehensive-vocab",
+        title: "Vocabulary",
         points: [
           { id: "s1-time-exp", description: "Time expressions (e.g. telling the time, days, days of the week, months, seasons)" },
           { id: "s1-food-drink", description: "Food and drink (e.g. meals, fruit and vegetables, meat, fish and seafood, snacks, drinks, cutlery and utensils)" },
           { id: "s1-body-health", description: "The human body and health (e.g. parts of the body, health and illness)" },
-          { id: "s1-travel-transport", description: "Travel and transport (e.g. finding the way)" }
-        ]
-      },
-      {
-        id: "s1-comprehensive-vocab",
-        title: "Vocabulary",
-        points: [
+          { id: "s1-travel-transport", description: "Travel and transport (e.g. finding the way)" },
+          { id: "s1-greetings", description: "Greetings: 你好, 再见, 谢谢, 不客气" },
+          { id: "s1-intro", description: "Self-intro: 我叫…, 我是英国人。" },
+          { id: "s1-numbers", description: "Numbers 1–100" },
+          { id: "s1-dates", description: "Days, months, dates" },
+          { id: "s1-family", description: "Family: 爸爸, 妈妈, 哥哥, 姐姐" },
           { id: "s1-v-high-freq", description: "High Frequency Vocabulary" },
           { id: "s1-v-adj", description: "Adjective and attributive phrases" },
           { id: "s1-v-adv", description: "Adverbs and adverbial phrases" },
@@ -96,29 +84,10 @@ export const CURRICULUM: Stage[] = [
   },
   {
     id: 2,
-    title: "Stage 2: Building Daily Language (A1.2)",
+    title: "Topic 2: Personal and social life",
     duration: "2–4 months",
     goal: "Talk about daily life, school, food, time. Build 300-word vocabulary.",
     topics: [
-      {
-        id: "s2-vocab",
-        title: "Vocabulary expansion",
-        points: [
-          { id: "s2-topics", description: "School subjects, classroom items, meals, hobbies, weather, colors" },
-          { id: "s2-measure", description: "Measure words: 本, 张, 件, 辆, 条" }
-        ]
-      },
-      {
-        id: "s2-personal-social",
-        title: "Personal and social life",
-        points: [
-          { id: "s2-self-family", description: "Self, family and friends (e.g. family and relationships, describing physical appearance, character and mood)" },
-          { id: "s2-home-life", description: "Home life (e.g. housing and locations, rooms and furniture, household appliances)" },
-          { id: "s2-colours", description: "Colours" },
-          { id: "s2-clothes", description: "Clothes and accessories" },
-          { id: "s2-leisure", description: "Leisure time (e.g. things to do, hobbies, sport)" }
-        ]
-      },
       {
         id: "s2-grammar",
         title: "Grammar",
@@ -163,35 +132,28 @@ export const CURRICULUM: Stage[] = [
           { id: "s2-express", description: "Express likes/dislikes" },
           { id: "s2-roleplay", description: "Role play: ordering food, describing weather" }
         ]
-      }
+      },
+      {
+        id: "s2-vocab",
+        title: "Vocabulary",
+        points: [
+          { id: "s2-self-family", description: "Self, family and friends (e.g. family and relationships, describing physical appearance, character and mood)" },
+          { id: "s2-home-life", description: "Home life (e.g. housing and locations, rooms and furniture, household appliances)" },
+          { id: "s2-colours", description: "Colours" },
+          { id: "s2-clothes", description: "Clothes and accessories" },
+          { id: "s2-leisure", description: "Leisure time (e.g. things to do, hobbies, sport)" },
+          { id: "s2-topics", description: "School subjects, classroom items, meals, hobbies, weather, colors" },
+          { id: "s2-measure", description: "Measure words: 本, 张, 件, 辆, 条" }
+        ]
+      },
     ]
   },
   {
     id: 3,
-    title: "Stage 3: Communicating in Context (A2)",
+    title: "Topic 3: The world around us",
     duration: "4–7 months",
     goal: "Handle everyday exchanges, express opinions, compare, narrate simple events.",
     topics: [
-      {
-        id: "s3-vocab",
-        title: "Vocabulary (to 600 words)",
-        points: [
-          { id: "s3-topics", description: "Shopping, travel, body parts, health, sports" },
-          { id: "s3-directions", description: "Locations & directions" },
-          { id: "s3-transport", description: "Transportation terms" }
-        ]
-      },
-      {
-        id: "s3-world",
-        title: "The world around us",
-        points: [
-          { id: "s3-people-places", description: "People and places (e.g. continents, countries and nationalities, compass points)" },
-          { id: "s3-natural-world", description: "The natural world, the environment, the climate and the weather" },
-          { id: "s3-tech", description: "Communications and technology (e.g. the digital world, documents and texts)" },
-          { id: "s3-built-env", description: "The built environment (e.g. buildings and services, shopping)" },
-          { id: "s3-measurements", description: "Measurements (e.g. units of length and mass, units of money)" }
-        ]
-      },
       {
         id: "s3-grammar",
         title: "Grammar",
@@ -237,31 +199,29 @@ export const CURRICULUM: Stage[] = [
           { id: "s3-travel", description: "Describe travel experiences" },
           { id: "s3-role", description: "Role play (shopping, hotel, directions)" }
         ]
-      }
+      },
+      {
+        id: "s3-vocab",
+        title: "Vocabulary",
+        points: [
+          { id: "s3-people-places", description: "People and places (e.g. continents, countries and nationalities, compass points)" },
+          { id: "s3-natural-world", description: "The natural world, the environment, the climate and the weather" },
+          { id: "s3-tech", description: "Communications and technology (e.g. the digital world, documents and texts)" },
+          { id: "s3-built-env", description: "The built environment (e.g. buildings and services, shopping)" },
+          { id: "s3-measurements", description: "Measurements (e.g. units of length and mass, units of money)" },
+          { id: "s3-topics", description: "Shopping, travel, body parts, health, sports" },
+          { id: "s3-directions", description: "Locations & directions" },
+          { id: "s3-transport", description: "Transportation terms" }
+        ]
+      },
     ]
   },
   {
     id: 4,
-    title: "Stage 4: Expanding Range (B1)",
+    title: "Topic 4: The world of work",
     duration: "7–10 months",
     goal: "Understand longer texts, narrate past/future events, discuss plans.",
     topics: [
-      {
-        id: "s4-vocab",
-        title: "Vocabulary (to 900 words)",
-        points: [
-          { id: "s4-topics", description: "Environment, festivals, technology, media, community" },
-          { id: "s4-idioms", description: "Common idioms & proverbs: 马马虎虎, 一心一意" }
-        ]
-      },
-      {
-        id: "s4-work",
-        title: "The world of work",
-        points: [
-          { id: "s4-education", description: "Education (e.g. learning institutions, places and people in school, the classroom, subjects and learning)" },
-          { id: "s4-jobs", description: "Work (e.g. jobs and careers, the workplace)" }
-        ]
-      },
       {
         id: "s4-grammar",
         title: "Grammar",
@@ -301,24 +261,25 @@ export const CURRICULUM: Stage[] = [
           { id: "s4-present", description: "Mini-presentation (1 min topic)" },
           { id: "s4-contrast", description: "Express contrasting opinions" }
         ]
-      }
+      },
+      {
+        id: "s4-vocab",
+        title: "Vocabulary",
+        points: [
+          { id: "s4-education", description: "Education (e.g. learning institutions, places and people in school, the classroom, subjects and learning)" },
+          { id: "s4-jobs", description: "Work (e.g. jobs and careers, the workplace)" },
+          { id: "s4-topics", description: "Environment, festivals, technology, media, community" },
+          { id: "s4-idioms", description: "Common idioms & proverbs: 马马虎虎, 一心一意" }
+        ]
+      },
     ]
   },
   {
     id: 5,
-    title: "Stage 5: Refining Accuracy & Style (B1+)",
+    title: "Topic 5: The international world",
     duration: "10–14 months",
     goal: "Use precise grammar, expand vocabulary to 1200 words, prepare for exam tasks.",
     topics: [
-      {
-        id: "s5-vocab",
-        title: "Vocabulary",
-        points: [
-          { id: "s5-topics", description: "Work, study, future plans, world issues" },
-          { id: "s5-opinion", description: "Expressions of opinion: 我认为…, 我觉得…" },
-          { id: "s5-collocations", description: "Collocations for argument writing" }
-        ]
-      },
       {
         id: "s5-grammar",
         title: "Grammar",
@@ -358,29 +319,24 @@ export const CURRICULUM: Stage[] = [
         ]
       },
       {
-        id: "s5-international",
-        title: "The international world",
+        id: "s5-vocab",
+        title: "Vocabulary",
         points: [
           { id: "s5-countries", description: "Countries, nationalities and languages" },
-          { id: "s5-culture", description: "Culture (e.g. customs, faiths and celebrations, famous sites and cities)" }
+          { id: "s5-culture", description: "Culture (e.g. customs, faiths and celebrations, famous sites and cities)" },
+          { id: "s5-topics", description: "Work, study, future plans, world issues" },
+          { id: "s5-opinion", description: "Expressions of opinion: 我认为…, 我觉得…" },
+          { id: "s5-collocations", description: "Collocations for argument writing" }
         ]
-      }
+      },
     ]
   },
   {
     id: 6,
-    title: "Stage 6: IGCSE Mastery (B2)",
+    title: "Topic 6: IGCSE Mastery",
     duration: "14–17 months",
     goal: "Perform confidently in all 4 IGCSE papers. Express abstract ideas clearly.",
     topics: [
-      {
-        id: "s6-vocab",
-        title: "Vocabulary (1500+ words)",
-        points: [
-          { id: "s6-topics", description: "Cultural references, social issues, environmental terms" },
-          { id: "s6-synonyms", description: "Synonyms & idioms for stylistic variety" }
-        ]
-      },
       {
         id: "s6-grammar",
         title: "Grammar & Style",
@@ -408,6 +364,14 @@ export const CURRICULUM: Stage[] = [
           { id: "s6-present", description: "Present, justify, and contrast ideas" },
           { id: "s6-qa", description: "Spontaneous Q&A under exam conditions" },
           { id: "s6-tone", description: "Natural tone and rhythm" }
+        ]
+      },
+      {
+        id: "s6-vocab",
+        title: "Vocabulary",
+        points: [
+          { id: "s6-topics", description: "Cultural references, social issues, environmental terms" },
+          { id: "s6-synonyms", description: "Synonyms & idioms for stylistic variety" }
         ]
       },
       {

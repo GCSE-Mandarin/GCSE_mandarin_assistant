@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { PenTool, BarChart3, ArrowLeft, GraduationCap, Settings, BookOpen, Volume2, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { BarChart3, ArrowLeft, GraduationCap, Settings, BookOpen, Volume2, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface Props {
-  onPlanLesson: () => void;
   onViewProgress: () => void;
   onBack: () => void;
   onSettings: () => void;
@@ -58,7 +57,6 @@ function decodeBase64ToUint8Array(base64: string) {
 }
 
 export const TutorDashboard: React.FC<Props> = ({
-  onPlanLesson,
   onViewProgress,
   onBack,
   onSettings,
@@ -91,40 +89,6 @@ export const TutorDashboard: React.FC<Props> = ({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-12">
-        {/* Plan Lesson Card */}
-        <button
-          onClick={onPlanLesson}
-          className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 hover:border-brand-300 hover:shadow-xl transition-all group text-left flex flex-col min-h-[240px] sm:min-h-[16rem] touch-manipulation active:scale-[0.98]"
-        >
-          <div className="bg-brand-50 w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-brand-100 transition-colors">
-            <PenTool className="text-brand-600 w-7 h-7 sm:w-8 sm:h-8" />
-          </div>
-          <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">Manage Lessons</h3>
-          <p className="text-sm sm:text-base text-slate-500 mb-auto">
-            Create lesson templates and assign them to students.
-          </p>
-          <div className="mt-4 sm:mt-6 flex items-center text-brand-600 font-semibold text-sm sm:text-base group-hover:translate-x-1 transition-transform">
-            Open Curriculum →
-          </div>
-        </button>
-
-        {/* Vocabulary Management Card */}
-        <button
-          onClick={onManageVocab}
-          className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 hover:border-green-300 hover:shadow-xl transition-all group text-left flex flex-col min-h-[240px] sm:min-h-[16rem] touch-manipulation active:scale-[0.98]"
-        >
-          <div className="bg-green-50 w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-green-100 transition-colors">
-            <BookOpen className="text-green-600 w-7 h-7 sm:w-8 sm:h-8" />
-          </div>
-          <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">Vocabulary Lists</h3>
-          <p className="text-sm sm:text-base text-slate-500 mb-auto">
-            Upload and manage vocabulary lists for student practice.
-          </p>
-          <div className="mt-4 sm:mt-6 flex items-center text-green-600 font-semibold text-sm sm:text-base group-hover:translate-x-1 transition-transform">
-            Manage Lists →
-          </div>
-        </button>
-
         {/* Progress Card */}
         <button
           onClick={onViewProgress}
@@ -156,6 +120,23 @@ export const TutorDashboard: React.FC<Props> = ({
           </p>
           <div className="mt-4 sm:mt-6 flex items-center text-purple-600 font-semibold text-sm sm:text-base group-hover:translate-x-1 transition-transform">
             View Curriculum →
+          </div>
+        </button>
+
+        {/* Vocabulary Management Card */}
+        <button
+          onClick={onManageVocab}
+          className="bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-slate-200 hover:border-green-300 hover:shadow-xl transition-all group text-left flex flex-col min-h-[240px] sm:min-h-[16rem] touch-manipulation active:scale-[0.98]"
+        >
+          <div className="bg-green-50 w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center mb-4 sm:mb-6 group-hover:bg-green-100 transition-colors">
+            <BookOpen className="text-green-600 w-7 h-7 sm:w-8 sm:h-8" />
+          </div>
+          <h3 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">Vocabulary Lists</h3>
+          <p className="text-sm sm:text-base text-slate-500 mb-auto">
+            Upload and manage vocabulary lists for student practice.
+          </p>
+          <div className="mt-4 sm:mt-6 flex items-center text-green-600 font-semibold text-sm sm:text-base group-hover:translate-x-1 transition-transform">
+            Manage Lists →
           </div>
         </button>
       </div>

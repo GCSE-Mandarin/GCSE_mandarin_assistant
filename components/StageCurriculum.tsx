@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Stage, Topic, LearningPoint, LessonTemplate } from '../types';
+import { Topic, Subtopic, LearningPoint, LessonTemplate } from '../types';
 import { CURRICULUM } from '../data/curriculum';
 import { getAllLessonTemplates } from '@/lib/services/storage';
 import { BookOpen, CheckCircle2, ChevronRight, ArrowLeft, Users, Loader2, Presentation } from 'lucide-react';
 
 interface Props {
   initialStageId?: number;
-  onSelectPoint: (stage: Stage, topic: Topic, point: LearningPoint) => void;
-  onAssignPoint: (stage: Stage, topic: Topic, point: LearningPoint) => void;
+  onSelectPoint: (stage: Topic, topic: Subtopic, point: LearningPoint) => void;
+  onAssignPoint: (stage: Topic, topic: Subtopic, point: LearningPoint) => void;
   onPresentPoint: (point: LearningPoint) => void;
   onBack: () => void;
 }

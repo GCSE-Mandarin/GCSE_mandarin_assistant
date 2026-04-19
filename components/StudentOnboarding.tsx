@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Stage, StudentProfile, Student } from '../types';
+import { Topic, StudentProfile, Student } from '../types';
 import { CURRICULUM } from '../data/curriculum';
 import { getStudents, createStudent } from '@/lib/services/storage';
 import { User, GraduationCap, ChevronRight, Loader2 } from 'lucide-react';
@@ -139,7 +139,7 @@ export const StudentOnboarding: React.FC<Props> = ({ onComplete }) => {
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
-              Current Level / Stage
+              Current Level / Topic
             </label>
             <div className="space-y-3 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
               {CURRICULUM.map((stage) => (
