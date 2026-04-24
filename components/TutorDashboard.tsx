@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { BarChart3, ArrowLeft, GraduationCap, Settings, BookOpen, Volume2, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import React from 'react';
+import { BarChart3, ArrowLeft, GraduationCap, Settings, BookOpen, UserRound } from 'lucide-react';
+import { Student } from '@/types';
 
 interface Props {
   onViewProgress: () => void;
@@ -7,53 +8,8 @@ interface Props {
   onSettings: () => void;
   onManageVocab: () => void;
   onCurriculum: () => void;
-}
-
-// Helper to add WAV header to raw PCM data
-function addWavHeader(pcmData: Uint8Array, sampleRate: number = 24000) {
-  const header = new ArrayBuffer(44);
-  const view = new DataView(header);
-
-  // RIFF identifier
-  view.setUint32(0, 0x52494646, false); // "RIFF"
-  view.setUint32(4, 36 + pcmData.length, true);
-  view.setUint32(8, 0x57415645, false); // "WAVE"
-
-  // "fmt " chunk
-  view.setUint32(12, 0x666d7420, false); // "fmt "
-  view.setUint32(16, 16, true); // chunk size
-  view.setUint16(20, 1, true); // PCM format
-  view.setUint16(22, 1, true); // Mono
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true); // byte rate (sampleRate * blockAlign)
-  view.setUint16(32, 2, true); // block align
-  view.setUint16(34, 16, true); // bits per sample
-
-  // "data" chunk
-  view.setUint32(36, 0x64617461, false); // "data"
-  view.setUint32(40, pcmData.length, true);
-
-  const combined = new Uint8Array(header.byteLength + pcmData.length);
-  combined.set(new Uint8Array(header), 0);
-  combined.set(pcmData, header.byteLength);
-  return combined;
-}
-
-// Helper for audio decoding
-function decodeBase64ToUint8Array(base64: string) {
-  const clean = base64.replace(/\s/g, '');
-  try {
-    const binaryString = atob(clean);
-    const len = binaryString.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes;
-  } catch (e) {
-    console.error("Base64 decode failed", e);
-    return new Uint8Array(0);
-  }
+  selectedStudent: Student | null;
+  onChangeStudent: () => void;
 }
 
 export const TutorDashboard: React.FC<Props> = ({
@@ -61,7 +17,9 @@ export const TutorDashboard: React.FC<Props> = ({
   onBack,
   onSettings,
   onManageVocab,
-  onCurriculum
+  onCurriculum,
+  selectedStudent,
+  onChangeStudent
 }) => {
   return (
     <div className="w-full max-w-4xl mx-auto relative p-4 sm:p-6 pb-12">
@@ -86,6 +44,24 @@ export const TutorDashboard: React.FC<Props> = ({
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Tutor Dashboard</h1>
         <p className="text-sm sm:text-base text-slate-500">Manage your curriculum and track student success.</p>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 bg-brand-100 rounded-full flex items-center justify-center text-brand-700 font-bold">
+            {selectedStudent ? selectedStudent.name.charAt(0).toUpperCase() : <UserRound size={22} />}
+          </div>
+          <div>
+            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Teaching</p>
+            <p className="font-bold text-slate-800">{selectedStudent?.name || 'No student selected'}</p>
+          </div>
+        </div>
+        <button
+          onClick={onChangeStudent}
+          className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-lg transition-colors"
+        >
+          {selectedStudent ? 'Change Student' : 'Choose Student'}
+        </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-12">

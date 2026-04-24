@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Topic, Subtopic, LearningPoint, LessonTemplate } from '../types';
+import { Topic, Subtopic, LearningPoint } from '../types';
 import { CURRICULUM } from '../data/curriculum';
 import { getAllLessonTemplates } from '@/lib/services/storage';
-import { BookOpen, CheckCircle2, ChevronRight, ArrowLeft, Users, Loader2, Presentation } from 'lucide-react';
+import { BookOpen, CheckCircle2, ChevronRight, ArrowLeft, Loader2, Presentation } from 'lucide-react';
 
 interface Props {
   initialStageId?: number;
   onSelectPoint: (stage: Topic, topic: Subtopic, point: LearningPoint) => void;
-  onAssignPoint: (stage: Topic, topic: Subtopic, point: LearningPoint) => void;
   onPresentPoint: (point: LearningPoint) => void;
   onBack: () => void;
 }
 
-export const StageCurriculum: React.FC<Props> = ({ initialStageId, onSelectPoint, onAssignPoint, onPresentPoint, onBack }) => {
+export const StageCurriculum: React.FC<Props> = ({ initialStageId, onSelectPoint, onPresentPoint, onBack }) => {
   const [activeStageId, setActiveStageId] = useState<number | null>(initialStageId ?? null);
   const [activeTopicId, setActiveTopicId] = useState<string | null>(null);
   const [templates, setTemplates] = useState<Set<string>>(new Set());
@@ -119,12 +118,6 @@ export const StageCurriculum: React.FC<Props> = ({ initialStageId, onSelectPoint
                                           className="flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
                                         >
                                           <Presentation size={14} /> Present
-                                        </button>
-                                        <button
-                                          onClick={() => onAssignPoint(stage, topic, pt)}
-                                          className="flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-lg bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors"
-                                        >
-                                          <Users size={14} /> Assign
                                         </button>
                                       </div>
                                     )}

@@ -2,10 +2,11 @@
 import React, { useEffect, useState } from 'react';
 import { getAllAssignments, getVocabProgress, updateAssignment, createStudent, getStudents } from '@/lib/services/storage';
 import { AssignedLesson, VocabProgress, Student } from '../types';
-import { ArrowLeft, User, BookOpen, CheckCircle2, Clock, Calendar, Loader2, Layers, Eye, X, Check, XCircle, Edit2, Save, UserPlus, ChevronRight } from 'lucide-react';
+import { ArrowLeft, User, BookOpen, CheckCircle2, Loader2, Eye, X, Check, XCircle, Edit2, Save, UserPlus, ChevronRight } from 'lucide-react';
 
 interface Props {
   onBack: () => void;
+  scopedStudent?: Student | null;
 }
 
 interface StudentStats {
@@ -16,12 +17,12 @@ interface StudentStats {
   vocab: Record<string, VocabProgress[]>;
 }
 
-export const StudentProgressView: React.FC<Props> = ({ onBack }) => {
+export const StudentProgressView: React.FC<Props> = ({ onBack, scopedStudent }) => {
   const [studentData, setStudentData] = useState<Record<string, StudentStats>>({});
   const [loading, setLoading] = useState(true);
 
   // Two-level navigation
-  const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<string | null>(scopedStudent?.name ?? null);
 
   // Lesson detail modal
   const [selectedLesson, setSelectedLesson] = useState<AssignedLesson | null>(null);
@@ -38,13 +39,31 @@ export const StudentProgressView: React.FC<Props> = ({ onBack }) => {
   const [addStudentError, setAddStudentError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (scopedStudent) {
+      setSelectedStudent(scopedStudent.name);
+    }
+  }, [scopedStudent]);
+
+  useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const allLessons = await getAllAssignments();
-      const allVocab = await getVocabProgress();
+      const [allLessons, allVocab, allStudents] = await Promise.all([
+        getAllAssignments(),
+        getVocabProgress(),
+        getStudents(),
+      ]);
       const stats: Record<string, StudentStats> = {};
 
+      const studentMatchesScope = (student: Student) => {
+        return !scopedStudent || student.id === scopedStudent.id;
+      };
+
+      allStudents.filter(studentMatchesScope).forEach(student => {
+        stats[student.name] = { totalLessons: 0, completedLessons: 0, averageScore: 0, lessons: [], vocab: {} };
+      });
+
       allLessons.forEach(lesson => {
+        if (scopedStudent && lesson.studentId !== scopedStudent.id && lesson.studentName !== scopedStudent.name) return;
         const name = lesson.studentName;
         if (!stats[name]) {
           stats[name] = { totalLessons: 0, completedLessons: 0, averageScore: 0, lessons: [], vocab: {} };
@@ -55,6 +74,7 @@ export const StudentProgressView: React.FC<Props> = ({ onBack }) => {
       });
 
       allVocab.forEach(v => {
+        if (scopedStudent && v.studentId !== scopedStudent.id && v.studentName !== scopedStudent.name) return;
         const name = v.studentName;
         if (!stats[name]) {
           stats[name] = { totalLessons: 0, completedLessons: 0, averageScore: 0, lessons: [], vocab: {} };
@@ -77,7 +97,7 @@ export const StudentProgressView: React.FC<Props> = ({ onBack }) => {
       setLoading(false);
     };
     fetchData();
-  }, []);
+  }, [scopedStudent]);
 
   const students = Object.keys(studentData).sort();
 
@@ -191,13 +211,41 @@ export const StudentProgressView: React.FC<Props> = ({ onBack }) => {
   // ── LEVEL 2: Student detail ──────────────────────────────────────────────
   if (selectedStudent !== null) {
     const data = studentData[selectedStudent];
+
+    if (loading || !data) {
+      return (
+        <div className="h-full bg-slate-50 flex flex-col relative">
+          <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-3 shrink-0">
+            <button
+              onClick={onBack}
+              className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <h1 className="text-xl font-bold text-slate-800">{selectedStudent}</h1>
+          </header>
+          <div className="flex items-center justify-center h-64">
+            <Loader2 size={40} className="text-brand-500 animate-spin" />
+          </div>
+        </div>
+      );
+    }
+
     const vocabCategories = Object.keys(data?.vocab || {});
 
     return (
       <div className="h-full bg-slate-50 flex flex-col relative">
         <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-3 shrink-0">
           <button
-            onClick={() => { setSelectedStudent(null); setSelectedLesson(null); setIsEditing(false); }}
+            onClick={() => {
+              setSelectedLesson(null);
+              setIsEditing(false);
+              if (scopedStudent) {
+                onBack();
+              } else {
+                setSelectedStudent(null);
+              }
+            }}
             className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
           >
             <ArrowLeft size={20} />

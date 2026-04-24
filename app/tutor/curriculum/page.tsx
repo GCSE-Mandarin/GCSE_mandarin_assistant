@@ -2,9 +2,8 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { StageCurriculum } from '@/components/StageCurriculum';
-import { AssignDialog } from '@/components/AssignDialog';
 import { Topic, Subtopic, LearningPoint } from '@/types';
-import { Suspense, useState } from 'react';
+import { Suspense } from 'react';
 
 function CurriculumContent() {
   const router = useRouter();
@@ -12,14 +11,8 @@ function CurriculumContent() {
   const stageParam = searchParams.get('stage');
   const initialStageId = stageParam ? parseInt(stageParam) : undefined;
 
-  const [assignTarget, setAssignTarget] = useState<{ pointId: string; description: string } | null>(null);
-
   const handleSelectPoint = (stage: Topic, topic: Subtopic, point: LearningPoint) => {
     router.push(`/tutor/editor/${stage.id}/${topic.id}/${point.id}`);
-  };
-
-  const handleAssignPoint = (_stage: Topic, _topic: Subtopic, point: LearningPoint) => {
-    setAssignTarget({ pointId: point.id, description: point.description });
   };
 
   const handlePresentPoint = (point: LearningPoint) => {
@@ -31,17 +24,9 @@ function CurriculumContent() {
       <StageCurriculum
         initialStageId={initialStageId}
         onSelectPoint={handleSelectPoint}
-        onAssignPoint={handleAssignPoint}
         onPresentPoint={handlePresentPoint}
         onBack={() => router.push('/tutor/dashboard')}
       />
-      {assignTarget && (
-        <AssignDialog
-          pointId={assignTarget.pointId}
-          pointDescription={assignTarget.description}
-          onClose={() => setAssignTarget(null)}
-        />
-      )}
     </>
   );
 }

@@ -8,12 +8,18 @@ import { ReactSketchCanvas, ReactSketchCanvasRef } from 'react-sketch-canvas';
 import {
   ArrowLeft, ChevronLeft, ChevronRight, Volume2, Loader2,
   Pen, Eraser, Undo2, Redo2, Trash2, Minus, Plus, Maximize2, Minimize2,
-  PanelRightClose, PanelRightOpen,
+  PanelRightClose, PanelRightOpen, UserPlus, CheckCircle2, Edit3, Save, X,
 } from 'lucide-react';
 
 interface Props {
   template: LessonTemplate;
   onBack: () => void;
+  onAssign: () => void;
+  assigning?: boolean;
+  selectedStudentName?: string;
+  isAssignedToSelectedStudent?: boolean;
+  onSavePages: (pages: string[]) => Promise<void>;
+  savingPages?: boolean;
 }
 
 const STROKE_COLORS = [
@@ -35,10 +41,23 @@ function buildTianZiGeSvg(cellSize: number): string {
   )}`;
 }
 
-export const TutorPresentationView: React.FC<Props> = ({ template, onBack }) => {
-  const pages = template.pages.length > 0 ? template.pages : [template.material || ''];
+export const TutorPresentationView: React.FC<Props> = ({
+  template,
+  onBack,
+  onAssign,
+  assigning = false,
+  selectedStudentName,
+  isAssignedToSelectedStudent = false,
+  onSavePages,
+  savingPages = false,
+}) => {
+  const [pages, setPages] = useState<string[]>(template.pages.length > 0 ? template.pages : [template.material || '']);
   const [currentPage, setCurrentPage] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [editingPage, setEditingPage] = useState<number | null>(null);
+  const [draftPage, setDraftPage] = useState('');
+  const [pagesBeforeEdit, setPagesBeforeEdit] = useState<string[] | null>(null);
+  const [pageBeforeEdit, setPageBeforeEdit] = useState<number | null>(null);
 
   const fontSizes = ['prose-sm', 'prose', 'prose-lg', 'prose-xl', 'prose-2xl'];
   const [fontSizeIndex, setFontSizeIndex] = useState(2);
@@ -56,6 +75,16 @@ export const TutorPresentationView: React.FC<Props> = ({ template, onBack }) => 
 
   const gridBg = buildTianZiGeSvg(GRID_CELL_SIZE);
 
+  useEffect(() => {
+    const nextPages = template.pages.length > 0 ? template.pages : [template.material || ''];
+    setPages(nextPages);
+    setCurrentPage(page => Math.min(page, Math.max(nextPages.length - 1, 0)));
+    setEditingPage(null);
+    setDraftPage('');
+    setPagesBeforeEdit(null);
+    setPageBeforeEdit(null);
+  }, [template]);
+
   const handlePrev = useCallback(() => {
     setCurrentPage(p => Math.max(0, p - 1));
   }, []);
@@ -66,12 +95,14 @@ export const TutorPresentationView: React.FC<Props> = ({ template, onBack }) => 
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (editingPage !== null || target?.tagName === 'TEXTAREA' || target?.tagName === 'INPUT') return;
       if (e.key === 'ArrowLeft') handlePrev();
       else if (e.key === 'ArrowRight') handleNext();
     };
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [handlePrev, handleNext]);
+  }, [editingPage, handlePrev, handleNext]);
 
   const toggleFullscreen = async () => {
     if (!document.fullscreenElement) {
@@ -124,26 +155,90 @@ export const TutorPresentationView: React.FC<Props> = ({ template, onBack }) => 
     canvasRef.current?.eraseMode(next);
   };
 
+  const startEditingCurrentPage = () => {
+    setPagesBeforeEdit(null);
+    setPageBeforeEdit(null);
+    setEditingPage(currentPage);
+    setDraftPage(pages[currentPage] || '');
+  };
+
+  const addPageAfterCurrent = () => {
+    const updated = [...pages];
+    const nextPageIndex = currentPage + 1;
+    updated.splice(nextPageIndex, 0, '');
+    setPagesBeforeEdit(pages);
+    setPageBeforeEdit(currentPage);
+    setPages(updated);
+    setCurrentPage(nextPageIndex);
+    setEditingPage(nextPageIndex);
+    setDraftPage('');
+  };
+
+  const cancelEditing = () => {
+    if (pagesBeforeEdit) {
+      setPages(pagesBeforeEdit);
+      setCurrentPage(pageBeforeEdit ?? Math.min(currentPage, Math.max(pagesBeforeEdit.length - 1, 0)));
+    }
+    setEditingPage(null);
+    setDraftPage('');
+    setPagesBeforeEdit(null);
+    setPageBeforeEdit(null);
+  };
+
+  const savePageChanges = async () => {
+    if (editingPage === null) return;
+
+    const updated = [...pages];
+    updated[editingPage] = draftPage;
+    await onSavePages(updated);
+    setPages(updated);
+    setEditingPage(null);
+    setDraftPage('');
+    setPagesBeforeEdit(null);
+    setPageBeforeEdit(null);
+  };
+
   const progress = ((currentPage + 1) / pages.length) * 100;
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col">
       {/* Header */}
       <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-20 shrink-0">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
           <button
             onClick={onBack}
             className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors font-medium py-1 px-2 rounded-lg hover:bg-slate-50"
           >
             <ArrowLeft size={20} /> Back
           </button>
-          <div className="hidden sm:block">
+          <div className="hidden sm:block min-w-0">
             <h2 className="text-sm font-bold text-slate-800 line-clamp-1">{template.pointDescription}</h2>
             <div className="flex gap-2 text-xs text-slate-500">
               <span className="bg-slate-100 px-2 py-0.5 rounded">{template.stageTitle}</span>
               <span className="bg-slate-100 px-2 py-0.5 rounded">{template.topicTitle}</span>
             </div>
           </div>
+          <button
+            onClick={onAssign}
+            disabled={assigning || isAssignedToSelectedStudent}
+            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shrink-0 ml-4 ${
+              isAssignedToSelectedStudent
+                ? 'bg-green-50 text-green-700 cursor-default'
+                : 'bg-brand-50 text-brand-700 hover:bg-brand-100 disabled:opacity-50'
+            }`}
+            title={selectedStudentName ? `Assign to ${selectedStudentName}` : 'Assign to selected student'}
+          >
+            {assigning ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : isAssignedToSelectedStudent ? (
+              <CheckCircle2 size={14} />
+            ) : (
+              <UserPlus size={14} />
+            )}
+            {isAssignedToSelectedStudent
+              ? `Assigned${selectedStudentName ? ` to ${selectedStudentName}` : ''}`
+              : `Assign${selectedStudentName ? ` to ${selectedStudentName}` : ''}`}
+          </button>
         </div>
 
         <div className="flex items-center gap-3">
@@ -194,18 +289,54 @@ export const TutorPresentationView: React.FC<Props> = ({ template, onBack }) => 
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
             <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8 md:p-10 min-h-[400px]">
               <div className="mb-4 flex gap-2 justify-end">
-                <button
-                  onClick={() => playAudio(pages[currentPage])}
-                  disabled={audioLoading}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-medium transition-colors disabled:opacity-50"
-                >
-                  {audioLoading ? <Loader2 size={14} className="animate-spin" /> : <Volume2 size={14} />}
-                  Read Aloud
-                </button>
+                {editingPage === currentPage ? (
+                  <>
+                    <button
+                      onClick={cancelEditing}
+                      disabled={savingPages}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-medium transition-colors disabled:opacity-50"
+                    >
+                      <X size={14} /> Cancel
+                    </button>
+                    <button
+                      onClick={savePageChanges}
+                      disabled={savingPages}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 hover:bg-black text-white text-sm font-medium transition-colors disabled:opacity-50"
+                    >
+                      {savingPages ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                      Save Page
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={startEditingCurrentPage}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 text-sm font-medium transition-colors"
+                    >
+                      <Edit3 size={14} /> Edit Page
+                    </button>
+                    <button
+                      onClick={addPageAfterCurrent}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-50 hover:bg-brand-100 text-brand-700 text-sm font-medium transition-colors"
+                    >
+                      <Plus size={14} /> Add Page
+                    </button>
+                  </>
+                )}
               </div>
-              <div className={`prose prose-slate prose-headings:font-bold prose-p:text-slate-600 prose-li:text-slate-600 max-w-none transition-all duration-200 ${fontSizes[fontSizeIndex]}`}>
-                <ReactMarkdown>{pages[currentPage]}</ReactMarkdown>
-              </div>
+              {editingPage === currentPage ? (
+                <textarea
+                  value={draftPage}
+                  onChange={event => setDraftPage(event.target.value)}
+                  className="w-full min-h-[420px] resize-y rounded-xl border border-slate-200 bg-slate-50 p-4 text-slate-700 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100 font-mono text-sm leading-6"
+                  placeholder="Write this page in Markdown..."
+                  autoFocus
+                />
+              ) : (
+                <div className={`prose prose-slate prose-headings:font-bold prose-p:text-slate-600 prose-li:text-slate-600 max-w-none transition-all duration-200 ${fontSizes[fontSizeIndex]}`}>
+                  <ReactMarkdown>{pages[currentPage]}</ReactMarkdown>
+                </div>
+              )}
             </div>
           </div>
 
@@ -213,14 +344,14 @@ export const TutorPresentationView: React.FC<Props> = ({ template, onBack }) => 
           <footer className="bg-white border-t border-slate-200 p-3 flex justify-between items-center shrink-0">
             <button
               onClick={handlePrev}
-              disabled={currentPage === 0}
+              disabled={currentPage === 0 || editingPage !== null}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm text-slate-600 hover:bg-slate-100 disabled:opacity-30 transition-all"
             >
               <ChevronLeft size={18} /> Previous
             </button>
             <button
               onClick={handleNext}
-              disabled={currentPage >= pages.length - 1}
+              disabled={currentPage >= pages.length - 1 || editingPage !== null}
               className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm text-slate-600 hover:bg-slate-100 disabled:opacity-30 transition-all"
             >
               Next <ChevronRight size={18} />

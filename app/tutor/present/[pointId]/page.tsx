@@ -2,8 +2,10 @@
 
 import { useRouter } from 'next/navigation';
 import { TutorPresentationView } from '@/components/TutorPresentationView';
-import { getLessonTemplate } from '@/lib/services/storage';
-import { LessonTemplate } from '@/types';
+import { TutorStudentSelector } from '@/components/TutorStudentSelector';
+import { useTutorStudent } from '@/components/TutorStudentProvider';
+import { assignLessonToStudents, getAssignmentsByPointId, getLessonTemplate, updateLessonTemplate } from '@/lib/services/storage';
+import { LessonTemplate, Student } from '@/types';
 import { Suspense, useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 
@@ -12,6 +14,13 @@ function PresentContent({ params }: { params: { pointId: string } }) {
   const { pointId } = params;
   const [template, setTemplate] = useState<LessonTemplate | null>(null);
   const [loading, setLoading] = useState(true);
+  const { selectedStudent } = useTutorStudent();
+  const [showStudentSelector, setShowStudentSelector] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const [savingPages, setSavingPages] = useState(false);
+  const [assignmentMessage, setAssignmentMessage] = useState<string | null>(null);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [isAssignedToSelectedStudent, setIsAssignedToSelectedStudent] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -22,6 +31,20 @@ function PresentContent({ params }: { params: { pointId: string } }) {
     };
     load();
   }, [pointId]);
+
+  useEffect(() => {
+    const loadAssignmentStatus = async () => {
+      if (!template || !selectedStudent) {
+        setIsAssignedToSelectedStudent(false);
+        return;
+      }
+
+      const assignments = await getAssignmentsByPointId(template.pointId);
+      setIsAssignedToSelectedStudent(assignments.some(assignment => assignment.studentId === selectedStudent.id));
+    };
+
+    void loadAssignmentStatus();
+  }, [template, selectedStudent]);
 
   if (loading) {
     return (
@@ -45,11 +68,83 @@ function PresentContent({ params }: { params: { pointId: string } }) {
     );
   }
 
+  const assignToStudent = async (student: Student) => {
+    setAssigning(true);
+    setAssignmentMessage(null);
+    try {
+      await assignLessonToStudents(template.pointId, [{ id: student.id, name: student.name }]);
+      setIsAssignedToSelectedStudent(true);
+      setAssignmentMessage(`Assigned to ${student.name}.`);
+      window.setTimeout(() => setAssignmentMessage(null), 3000);
+    } catch {
+      alert('Failed to assign lesson. Please try again.');
+    } finally {
+      setAssigning(false);
+    }
+  };
+
+  const handleAssign = () => {
+    if (!selectedStudent) {
+      setShowStudentSelector(true);
+      return;
+    }
+    void assignToStudent(selectedStudent);
+  };
+
+  const handleSavePages = async (pages: string[]) => {
+    setSavingPages(true);
+    setSaveMessage(null);
+    try {
+      const updatedTemplate: LessonTemplate = {
+        ...template,
+        pages,
+        material: pages.join('\n---\n'),
+      };
+      await updateLessonTemplate(updatedTemplate);
+      setTemplate(updatedTemplate);
+      setSaveMessage('Lesson pages saved.');
+      window.setTimeout(() => setSaveMessage(null), 3000);
+    } catch {
+      alert('Failed to save lesson pages. Please try again.');
+      throw new Error('Failed to save lesson pages');
+    } finally {
+      setSavingPages(false);
+    }
+  };
+
   return (
-    <TutorPresentationView
-      template={template}
-      onBack={() => router.push('/tutor/curriculum')}
-    />
+    <>
+      <TutorPresentationView
+        template={template}
+        onBack={() => router.push('/tutor/curriculum')}
+        onAssign={handleAssign}
+        assigning={assigning}
+        selectedStudentName={selectedStudent?.name}
+        isAssignedToSelectedStudent={isAssignedToSelectedStudent}
+        onSavePages={handleSavePages}
+        savingPages={savingPages}
+      />
+      {assignmentMessage && (
+        <div className="fixed bottom-6 right-6 z-40 bg-green-600 text-white text-sm font-medium px-4 py-3 rounded-xl shadow-lg">
+          {assignmentMessage}
+        </div>
+      )}
+      {saveMessage && (
+        <div className="fixed bottom-6 right-6 z-40 bg-blue-600 text-white text-sm font-medium px-4 py-3 rounded-xl shadow-lg">
+          {saveMessage}
+        </div>
+      )}
+      <TutorStudentSelector
+        open={showStudentSelector}
+        required={false}
+        title="Choose a Student"
+        description="Select a student to assign this lesson."
+        onClose={() => setShowStudentSelector(false)}
+        onSelected={student => {
+          void assignToStudent(student);
+        }}
+      />
+    </>
   );
 }
 
