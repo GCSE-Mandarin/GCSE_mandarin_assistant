@@ -1,7 +1,8 @@
 "use client";
 
-import React from 'react';
-import { CheckCircle2, Loader2, User, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckCircle2, Loader2, User, UserPlus, X } from 'lucide-react';
+import { createStudent } from '@/lib/services/storage';
 import { Student } from '@/types';
 import { useTutorStudent } from './TutorStudentProvider';
 
@@ -22,7 +23,11 @@ export const TutorStudentSelector: React.FC<Props> = ({
   onClose,
   onSelected,
 }) => {
-  const { students, loading, selectedStudent, selectStudent } = useTutorStudent();
+  const { students, loading, selectedStudent, selectStudent, refreshStudents } = useTutorStudent();
+  const [addingStudent, setAddingStudent] = useState(false);
+  const [showAddStudent, setShowAddStudent] = useState(false);
+  const [newStudentName, setNewStudentName] = useState('');
+  const [addStudentError, setAddStudentError] = useState<string | null>(null);
 
   if (!open) return null;
 
@@ -35,6 +40,30 @@ export const TutorStudentSelector: React.FC<Props> = ({
     selectStudent(student);
     onSelected?.(student);
     onClose?.();
+  };
+
+  const handleAddStudent = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const name = newStudentName.trim();
+    if (!name) return;
+
+    if (students.some(student => student.name.toLowerCase() === name.toLowerCase())) {
+      setAddStudentError('A student with this name already exists.');
+      return;
+    }
+
+    setAddingStudent(true);
+    setAddStudentError(null);
+    try {
+      const created = await createStudent(name);
+      if (!created) throw new Error('Failed to create student');
+      await refreshStudents();
+      handleSelect(created);
+    } catch {
+      setAddStudentError('Failed to add student. Please try again.');
+    } finally {
+      setAddingStudent(false);
+    }
   };
 
   return (
@@ -63,15 +92,90 @@ export const TutorStudentSelector: React.FC<Props> = ({
               <Loader2 size={32} className="text-brand-500 animate-spin" />
             </div>
           ) : students.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="bg-slate-100 p-4 rounded-full inline-flex mb-4">
-                <User size={32} className="text-slate-400" />
+            <div className="space-y-4">
+              {showAddStudent ? (
+                <form onSubmit={handleAddStudent} className="p-4 rounded-xl border-2 border-brand-200 bg-brand-50 space-y-3">
+                  <input
+                    type="text"
+                    value={newStudentName}
+                    onChange={event => { setNewStudentName(event.target.value); setAddStudentError(null); }}
+                    placeholder="Student name"
+                    className="w-full px-3 py-2 rounded-lg border border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    autoFocus
+                  />
+                  {addStudentError && <p className="text-sm text-red-600">{addStudentError}</p>}
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setShowAddStudent(false); setNewStudentName(''); setAddStudentError(null); }}
+                      className="px-3 py-2 text-sm font-medium text-slate-600 hover:bg-white rounded-lg transition-colors"
+                      disabled={addingStudent}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={addingStudent || !newStudentName.trim()}
+                      className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {addingStudent ? <Loader2 size={15} className="animate-spin" /> : <UserPlus size={15} />}
+                      Add
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <button
+                  onClick={() => setShowAddStudent(true)}
+                  className="w-full p-4 rounded-xl border-2 border-dashed border-brand-200 text-brand-700 hover:bg-brand-50 transition-colors flex items-center justify-center gap-2 font-semibold"
+                >
+                  <UserPlus size={18} /> Add New Student
+                </button>
+              )}
+              <div className="text-center py-8">
+                <p className="font-semibold text-slate-700">No students found</p>
+                <p className="text-sm text-slate-500 mt-1">Add a student to start teaching.</p>
               </div>
-              <p className="font-semibold text-slate-700">No students found</p>
-              <p className="text-sm text-slate-500 mt-1">Add a student from Student Progress first.</p>
             </div>
           ) : (
             <div className="space-y-2">
+              {showAddStudent ? (
+                <form onSubmit={handleAddStudent} className="p-4 rounded-xl border-2 border-brand-200 bg-brand-50 space-y-3">
+                  <input
+                    type="text"
+                    value={newStudentName}
+                    onChange={event => { setNewStudentName(event.target.value); setAddStudentError(null); }}
+                    placeholder="Student name"
+                    className="w-full px-3 py-2 rounded-lg border border-brand-200 focus:outline-none focus:ring-2 focus:ring-brand-400"
+                    autoFocus
+                  />
+                  {addStudentError && <p className="text-sm text-red-600">{addStudentError}</p>}
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setShowAddStudent(false); setNewStudentName(''); setAddStudentError(null); }}
+                      className="px-3 py-2 text-sm font-medium text-slate-600 hover:bg-white rounded-lg transition-colors"
+                      disabled={addingStudent}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={addingStudent || !newStudentName.trim()}
+                      className="flex items-center gap-2 px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {addingStudent ? <Loader2 size={15} className="animate-spin" /> : <UserPlus size={15} />}
+                      Add
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <button
+                  onClick={() => setShowAddStudent(true)}
+                  className="w-full p-4 rounded-xl border-2 border-dashed border-brand-200 text-brand-700 hover:bg-brand-50 transition-colors flex items-center justify-center gap-2 font-semibold"
+                >
+                  <UserPlus size={18} /> Add New Student
+                </button>
+              )}
               {students.map(student => {
                 const isSelected = selectedStudent?.id === student.id;
                 return (
