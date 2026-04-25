@@ -203,13 +203,14 @@ export const TutorPresentationView: React.FC<Props> = ({
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-20 shrink-0">
+      <header className="bg-white border-b border-slate-200 px-3 sm:px-4 py-3 flex items-center justify-between gap-2 sticky top-0 z-20 shrink-0">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <button
             onClick={onBack}
-            className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors font-medium py-1 px-2 rounded-lg hover:bg-slate-50"
+            className="flex items-center gap-1 sm:gap-2 text-slate-500 hover:text-slate-800 transition-colors font-medium py-1 px-1.5 sm:px-2 rounded-lg hover:bg-slate-50 shrink-0"
           >
-            <ArrowLeft size={20} /> Back
+            <ArrowLeft size={20} />
+            <span className="hidden sm:inline">Back</span>
           </button>
           <div className="hidden sm:block min-w-0">
             <h2 className="text-sm font-bold text-slate-800 line-clamp-1">{template.pointDescription}</h2>
@@ -241,11 +242,11 @@ export const TutorPresentationView: React.FC<Props> = ({
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-            Page {currentPage + 1} / {pages.length}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">
+            <span className="hidden sm:inline">Page </span>{currentPage + 1} / {pages.length}
           </span>
-          <div className="w-24 bg-slate-100 h-1.5 rounded-full overflow-hidden">
+          <div className="hidden sm:block sm:w-24 bg-slate-100 h-1.5 rounded-full overflow-hidden">
             <div className="bg-brand-600 h-full transition-all duration-300" style={{ width: `${progress}%` }} />
           </div>
           <div className="flex items-center bg-slate-100 rounded-lg p-0.5">
