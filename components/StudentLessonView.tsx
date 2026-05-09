@@ -345,19 +345,15 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
                   <PenTool className="text-brand-600 w-8 h-8" />
                 </div>
                 {submitted && (
-                   <span className={`px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1 ${
-                     score >= 80 ? 'bg-green-100 text-green-700' : 
-                     score >= 60 ? 'bg-yellow-100 text-yellow-700' : 
-                     'bg-red-100 text-red-700'
-                   }`}>
-                     <CheckCircle2 size={14} /> Score: {score}%
+                   <span className="px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1 bg-green-100 text-green-700">
+                     <CheckCircle2 size={14} /> Completed
                    </span>
                 )}
               </div>
               <h3 className="text-2xl font-bold text-slate-800 mb-2">Practice Exercises</h3>
               <p className="text-slate-500 mb-auto">
                 {submitted 
-                  ? `Completed ${lesson.exercises.length} questions with ${score}% average` 
+                  ? `Completed ${lesson.exercises.length} questions.` 
                   : `Complete ${lesson.exercises.length} questions to test your knowledge.`}
               </p>
               <div className="flex items-center text-brand-600 font-semibold mt-4">
@@ -484,22 +480,15 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
           <main className="flex-1 overflow-y-auto p-6">
             <div className="max-w-3xl mx-auto space-y-4">
               {lesson.exercises.map((ex, idx) => {
-                const exScore = exerciseScores[idx] || 0;
                 const exFeedback = exerciseFeedback[idx] || '';
                 const tutorComment = (lesson.tutorComments || [])[idx] || '';
                 const userAns = answers[idx] || '(No answer)';
-                const borderColor = exScore === 100 ? 'border-green-300' : exScore >= 50 ? 'border-yellow-300' : 'border-red-300';
-                const bgColor = exScore === 100 ? 'bg-green-50' : exScore >= 50 ? 'bg-yellow-50' : 'bg-red-50';
-                const scoreColor = exScore === 100 ? 'text-green-600' : exScore >= 50 ? 'text-yellow-600' : 'text-red-600';
-                const iconColor = exScore === 100 ? 'text-green-500' : exScore >= 50 ? 'text-yellow-500' : 'text-red-500';
 
                 return (
-                  <div key={idx} className={`bg-white p-6 rounded-xl border-2 ${borderColor} ${bgColor}`}>
+                  <div key={idx} className="bg-white p-6 rounded-xl border-2 border-slate-200">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex items-start gap-3">
-                        <div className={`mt-0.5 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold ${
-                          exScore === 100 ? 'bg-green-500' : exScore >= 50 ? 'bg-yellow-500' : 'bg-red-500'
-                        }`}>
+                        <div className="mt-0.5 w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold bg-brand-500">
                           {idx + 1}
                         </div>
                         <div className="flex-1">
@@ -508,14 +497,6 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
                             <p className="text-sm text-slate-500 mt-1">{ex.questionTranslation}</p>
                           )}
                         </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        <span className={`font-bold text-xl ${scoreColor}`}>{exScore}%</span>
-                        {exScore === 100 ? (
-                          <CheckCircle2 className={iconColor} size={24} />
-                        ) : (
-                          <XCircle className={iconColor} size={24} />
-                        )}
                       </div>
                     </div>
                     <div className="ml-11 space-y-3">
@@ -563,34 +544,15 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
 
           <main className="flex-1 overflow-y-auto p-6 flex items-center justify-center">
             <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-200 p-8 text-center">
-              <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${score === lesson.exercises.length ? 'bg-green-100' : 'bg-blue-100'}`}>
-                {score === lesson.exercises.length ? (
-                  <CheckCircle2 className="text-green-600" size={48} />
-                ) : (
-                  <GraduationCap className="text-blue-600" size={48} />
-                )}
+              <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 bg-green-100">
+                <CheckCircle2 className="text-green-600" size={48} />
               </div>
               <h3 className="text-2xl font-bold text-slate-800 mb-2">
-                {score === 100 ? 'Perfect Score!' : score >= 80 ? 'Excellent Work!' : score >= 60 ? 'Well Done!' : 'Keep Practicing!'}
+                Practice Complete!
               </h3>
               <p className="text-slate-600 mb-6">
-                Your average score: <span className={`font-bold text-lg ${score >= 80 ? 'text-green-600' : score >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>{score}%</span>
+                You have finished all {lesson.exercises.length} questions.
               </p>
-              {exerciseScores && exerciseScores.length > 0 && (
-                <div className="mb-6 p-4 bg-slate-50 rounded-xl border border-slate-200">
-                  <p className="text-sm font-bold text-slate-500 uppercase mb-2">Exercise Breakdown</p>
-                  <div className="space-y-2">
-                    {exerciseScores.map((exScore, idx) => (
-                      <div key={idx} className="flex items-center justify-between">
-                        <span className="text-sm text-slate-600">Question {idx + 1}:</span>
-                        <span className={`font-bold ${exScore >= 80 ? 'text-green-600' : exScore >= 50 ? 'text-yellow-600' : 'text-red-600'}`}>
-                          {exScore}%
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
               {lesson.tutorOverallComment && (
                 <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
                   <p className="text-sm font-bold text-blue-700 uppercase mb-2">Tutor's Overall Comment</p>
@@ -709,42 +671,13 @@ export const StudentLessonView: React.FC<Props> = ({ lesson, onBack }) => {
               )}
 
               {feedbackStatus !== 'idle' && !evaluating && currentScore !== null && (
-                <div className={`mt-6 p-4 rounded-xl border-2 ${
-                  currentScore === 100 
-                    ? 'bg-green-50 border-green-300' 
-                    : currentScore >= 50
-                    ? 'bg-yellow-50 border-yellow-300'
-                    : 'bg-red-50 border-red-300'
-                }`}>
-                  <div className="flex items-start gap-3">
-                    {currentScore === 100 ? (
-                      <CheckCircle2 className="text-green-600 flex-shrink-0 mt-0.5" size={24} />
-                    ) : (
-                      <XCircle className={`flex-shrink-0 mt-0.5 ${currentScore >= 50 ? 'text-yellow-600' : 'text-red-600'}`} size={24} />
-                    )}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <p className={`font-bold text-lg ${
-                          currentScore === 100 
-                            ? 'text-green-800' 
-                            : currentScore >= 50
-                            ? 'text-yellow-800'
-                            : 'text-red-800'
-                        }`}>
-                          Score: {currentScore}%
-                        </p>
-                        {currentScore === 100 && (
-                          <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-1 rounded">Perfect!</span>
-                        )}
-                      </div>
-                      {currentEx.answer && (
-                        <div className="mt-2 pt-2 border-t border-slate-200">
-                          <p className="text-xs font-bold text-slate-400 uppercase mb-1">Correct Answer:</p>
-                          <p className="text-slate-700 font-medium">{currentEx.answer}</p>
-                        </div>
-                      )}
+                <div className="mt-6 p-4 rounded-xl border-2 bg-slate-50 border-slate-200">
+                  {currentEx.answer && (
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase mb-1">Correct Answer:</p>
+                      <p className="text-slate-700 font-medium">{currentEx.answer}</p>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
