@@ -74,7 +74,20 @@ export async function POST(req: Request) {
 
     switch (action) {
       case 'generateLearningMaterial': {
-        const { stage, topic, point } = params;
+        const { stage, topic, point, referenceLesson } = params;
+        const referenceLessonPrompt = referenceLesson?.material
+          ? `
+**OPTIONAL REFERENCE LESSON PROVIDED BY THE TUTOR:**
+- Reference lesson title: ${referenceLesson.title || 'Untitled lesson'}
+
+Use this reference lesson to understand the tutor's preferred structure, pacing, tone, difficulty level, and amount of detail. Do NOT copy it directly. Adapt only the useful style and teaching approach to the new learning point.
+
+Reference lesson material:
+---
+${String(referenceLesson.material).slice(0, 6000)}
+---
+`
+          : '';
         const { text } = await generateText({
           model: gemini3,
           messages: [{
@@ -85,6 +98,7 @@ Generate learning material for:
 - Stage: ${stage}
 - Topic: ${topic}
 - Learning Point: ${point}
+${referenceLessonPrompt}
 
 **IMPORTANT GUIDELINES:**
 

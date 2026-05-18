@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Topic, Subtopic, LearningPoint, Exercise, LessonTemplate } from '../types';
 import { generateLearningMaterial, generateExercises } from '@/lib/services/geminiService';
-import { getLessonTemplate, saveLessonTemplate } from '@/lib/services/storage';
+import { getAllLessonTemplates, getLessonTemplate, saveLessonTemplate } from '@/lib/services/storage';
 import ReactMarkdown from 'react-markdown';
 import { Loader2, Save, ArrowLeft, RefreshCw, PenLine, Plus, Minus, Trash2, X, ChevronRight, ChevronLeft, BookOpen, Dumbbell, Languages, AlertTriangle, CheckCircle2, Scissors, Merge, FileText } from 'lucide-react';
 
@@ -36,12 +36,53 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack }) =
   const [saving, setSaving] = useState(false);
   const [isExistingTemplate, setIsExistingTemplate] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [needsGeneration, setNeedsGeneration] = useState(false);
+  const [referenceTemplates, setReferenceTemplates] = useState<LessonTemplate[]>([]);
+  const [selectedReferencePointId, setSelectedReferencePointId] = useState('');
+
+  const createReferencePayload = (template?: LessonTemplate) => {
+    if (!template) return null;
+    return {
+      title: `${template.stageTitle} / ${template.topicTitle} / ${template.pointDescription}`,
+      material: template.material || template.pages.join('\n---\n'),
+    };
+  };
+
+  const generateMaterial = async (referenceTemplate?: LessonTemplate) => {
+    setMaterialLoading(true);
+    setError(null);
+    try {
+      const data = await generateLearningMaterial(
+        stage.title,
+        topic.title,
+        point.description,
+        createReferencePayload(referenceTemplate)
+      );
+      setOriginalMaterial(data);
+      setPages([data]);
+      setExercises([]);
+      setOriginalExercises([]);
+      setNeedsGeneration(false);
+      setIsExistingTemplate(false);
+      setMaterialLoading(false);
+    } catch (err: any) {
+      if (err.message === 'MISSING_API_KEY') {
+        setError("Missing API Key. Please go to Settings to configure it.");
+      } else {
+        setError("Failed to generate content. Please try again.");
+      }
+      setMaterialLoading(false);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
     const loadOrGenerate = async () => {
       setMaterialLoading(true);
       setError(null);
+      setNeedsGeneration(false);
+      setIsExistingTemplate(false);
+      setSelectedReferencePointId('');
       try {
         const existing = await getLessonTemplate(point.id);
         if (existing && mounted) {
@@ -54,12 +95,14 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack }) =
           return;
         }
 
-        const data = await generateLearningMaterial(stage.title, topic.title, point.description);
+        const allTemplates = await getAllLessonTemplates();
         if (mounted) {
-          setOriginalMaterial(data);
-          setPages([data]);
+          setReferenceTemplates(allTemplates.filter(template => template.pointId !== point.id));
+          setOriginalMaterial('');
+          setPages(['']);
           setOriginalExercises([]);
           setExercises([]);
+          setNeedsGeneration(true);
           setMaterialLoading(false);
         }
       } catch (err: any) {
@@ -143,23 +186,8 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack }) =
   };
 
   const regenerateMaterial = async () => {
-    setMaterialLoading(true);
-    setError(null);
-    try {
-      const data = await generateLearningMaterial(stage.title, topic.title, point.description);
-      setOriginalMaterial(data);
-      setPages([data]);
-      setExercises([]);
-      setOriginalExercises([]);
-      setMaterialLoading(false);
-    } catch (err: any) {
-      if (err.message === 'MISSING_API_KEY') {
-        setError("Missing API Key. Please go to Settings to configure it.");
-      } else {
-        setError("Failed to generate content. Please try again.");
-      }
-      setMaterialLoading(false);
-    }
+    const referenceTemplate = referenceTemplates.find(template => template.pointId === selectedReferencePointId);
+    await generateMaterial(referenceTemplate);
   };
 
   // Page management
@@ -227,6 +255,12 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack }) =
     }
   };
 
+  const selectedReferenceTemplate = referenceTemplates.find(template => template.pointId === selectedReferencePointId);
+
+  const handleGenerateMaterial = async () => {
+    await generateMaterial(selectedReferenceTemplate);
+  };
+
   if (error) {
     return (
       <div className="h-full flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
@@ -255,6 +289,77 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack }) =
           {isExistingTemplate ? 'Loading Template...' : 'Generating Lesson...'}
         </h3>
         <p className="text-slate-500 mt-2">&quot;{point.description}&quot;</p>
+      </div>
+    );
+  }
+
+  if (needsGeneration) {
+    return (
+      <div className="min-h-screen flex flex-col bg-slate-50">
+        <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-4">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors font-medium py-1 px-2 rounded-lg hover:bg-slate-50"
+          >
+            <ArrowLeft size={20} /> Back
+          </button>
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">{point.description}</h2>
+            <div className="flex gap-2 text-xs text-slate-500">
+              <span className="bg-slate-100 px-2 py-0.5 rounded">{stage.title}</span>
+              <span className="bg-slate-100 px-2 py-0.5 rounded">{topic.title}</span>
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-1 flex items-center justify-center p-6">
+          <div className="w-full max-w-2xl bg-white border border-slate-200 rounded-2xl shadow-sm p-8">
+            <div className="bg-brand-50 text-brand-700 w-12 h-12 rounded-xl flex items-center justify-center mb-5">
+              <BookOpen size={24} />
+            </div>
+            <h3 className="text-2xl font-bold text-slate-800 mb-2">Generate New Lesson Material</h3>
+            <p className="text-slate-500 mb-6">
+              Choose an existing lesson as an optional reference. The AI will use it for teaching style and structure, not as content to copy.
+            </p>
+
+            <label className="block text-sm font-bold text-slate-700 mb-2">
+              Reference lesson
+            </label>
+            <select
+              value={selectedReferencePointId}
+              onChange={(event) => setSelectedReferencePointId(event.target.value)}
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white text-slate-700 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none"
+            >
+              <option value="">No reference lesson</option>
+              {referenceTemplates.map(template => (
+                <option key={template.pointId} value={template.pointId}>
+                  {template.stageTitle} / {template.topicTitle} / {template.pointDescription}
+                </option>
+              ))}
+            </select>
+
+            {referenceTemplates.length === 0 && (
+              <p className="text-sm text-slate-400 mt-3">
+                No saved lesson templates are available yet. You can still generate without a reference.
+              </p>
+            )}
+
+            <div className="mt-8 flex justify-end gap-3">
+              <button
+                onClick={onBack}
+                className="px-5 py-3 rounded-xl font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleGenerateMaterial}
+                className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-6 py-3 rounded-xl font-semibold shadow-lg shadow-brand-200 transition-all transform active:scale-[0.98]"
+              >
+                Generate Lesson <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+        </main>
       </div>
     );
   }

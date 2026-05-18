@@ -28,10 +28,14 @@ const callApiRoute = async (action: string, params: any): Promise<any> => {
 export const generateLearningMaterial = async (
   stage: string,
   topic: string,
-  point: string
+  point: string,
+  referenceLesson?: {
+    title: string;
+    material: string;
+  } | null
 ): Promise<string> => {
   try {
-    const result = await callApiRoute('generateLearningMaterial', { stage, topic, point });
+    const result = await callApiRoute('generateLearningMaterial', { stage, topic, point, referenceLesson });
     return result || "## Error\nNo content generated.";
   } catch (error: any) {
     if (error?.message?.includes('GEMINI_API_KEY')) throw new Error("MISSING_API_KEY");
