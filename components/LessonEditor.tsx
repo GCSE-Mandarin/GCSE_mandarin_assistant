@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Topic, Subtopic, LearningPoint, Exercise, LessonTemplate } from '../types';
 import { generateLearningMaterial, generateExercises } from '@/lib/services/geminiService';
 import { getAllLessonTemplates, getLessonTemplate, saveLessonTemplate } from '@/lib/services/storage';
@@ -10,12 +10,15 @@ interface Props {
   topic: Subtopic;
   point: LearningPoint;
   onBack: () => void;
+  initialView?: EditorView;
 }
 
 type EditorView = 'material' | 'exercises';
 
-export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack }) => {
-  const [view, setView] = useState<EditorView>('material');
+export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack, initialView = 'material' }) => {
+  const [view, setView] = useState<EditorView>(initialView);
+  const mainRef = useRef<HTMLElement | null>(null);
+  const exerciseScrollRef = useRef<HTMLDivElement | null>(null);
   
   const fontSizes = ['prose-sm', 'prose', 'prose-lg', 'prose-xl', 'prose-2xl'];
   const [fontSizeIndex, setFontSizeIndex] = useState(1);
@@ -122,8 +125,22 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack }) =
 
   const material = pages.join('\n---\n');
 
+  const scrollEditorToTop = () => {
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+      exerciseScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  };
+
+  useEffect(() => {
+    if (view !== 'exercises') return;
+    scrollEditorToTop();
+  }, [view, exercisesLoading]);
+
   const handleGenerateExercises = async () => {
     setView('exercises');
+    scrollEditorToTop();
     if (exercises.length === 0) {
       setExercisesLoading(true);
       const data = await generateExercises(stage.title, topic.title, point.description, material);
@@ -406,7 +423,7 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack }) =
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto custom-scrollbar relative">
+      <main ref={mainRef} className="flex-1 overflow-y-auto custom-scrollbar relative">
         
         {view === 'material' && (
             <div className="h-full flex flex-col">
@@ -580,7 +597,7 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack }) =
                         onClick={handleGenerateExercises}
                         className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-8 py-3 rounded-xl font-semibold shadow-lg shadow-brand-200 transition-all transform active:scale-[0.98]"
                     >
-                        Generate Exercises <ChevronRight size={18} />
+                        {exercises.length > 0 ? 'View Exercises' : 'Generate Exercises'} <ChevronRight size={18} />
                     </button>
                 </div>
             </div>
@@ -595,7 +612,7 @@ export const LessonEditor: React.FC<Props> = ({ stage, topic, point, onBack }) =
                         <p className="text-xs text-slate-400 mt-2">This may take a moment</p>
                     </div>
                  ) : (
-                    <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-slate-50">
+                    <div ref={exerciseScrollRef} className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-slate-50">
                         <div className="max-w-3xl mx-auto">
                             <div className="flex justify-between items-center mb-6">
                                 <div>

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { TutorPresentationView } from '@/components/TutorPresentationView';
 import { TutorStudentSelector } from '@/components/TutorStudentSelector';
 import { useTutorStudent } from '@/components/TutorStudentProvider';
+import { CURRICULUM } from '@/data/curriculum';
 import { assignLessonToStudents, getAssignmentsByPointId, getLessonTemplate, updateLessonTemplate } from '@/lib/services/storage';
 import { LessonTemplate, Student } from '@/types';
 import { Suspense, useEffect, useState } from 'react';
@@ -91,6 +92,20 @@ function PresentContent({ params }: { params: { pointId: string } }) {
     void assignToStudent(selectedStudent);
   };
 
+  const handleEditExercises = () => {
+    for (const stage of CURRICULUM) {
+      for (const topic of stage.topics) {
+        const point = topic.points.find(p => p.id === template.pointId);
+        if (point) {
+          router.push(`/tutor/editor/${stage.id}/${topic.id}/${point.id}?view=exercises&back=present`);
+          return;
+        }
+      }
+    }
+
+    alert('Could not find this lesson in the curriculum.');
+  };
+
   const handleSavePages = async (pages: string[]) => {
     setSavingPages(true);
     setSaveMessage(null);
@@ -118,6 +133,7 @@ function PresentContent({ params }: { params: { pointId: string } }) {
         template={template}
         onBack={() => router.push('/tutor/curriculum')}
         onAssign={handleAssign}
+        onEditExercises={handleEditExercises}
         assigning={assigning}
         selectedStudentName={selectedStudent?.name}
         isAssignedToSelectedStudent={isAssignedToSelectedStudent}

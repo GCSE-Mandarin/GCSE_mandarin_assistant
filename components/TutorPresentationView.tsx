@@ -15,6 +15,7 @@ interface Props {
   template: LessonTemplate;
   onBack: () => void;
   onAssign: () => void;
+  onEditExercises: () => void;
   assigning?: boolean;
   selectedStudentName?: string;
   isAssignedToSelectedStudent?: boolean;
@@ -45,6 +46,7 @@ export const TutorPresentationView: React.FC<Props> = ({
   template,
   onBack,
   onAssign,
+  onEditExercises,
   assigning = false,
   selectedStudentName,
   isAssignedToSelectedStudent = false,
@@ -239,6 +241,14 @@ export const TutorPresentationView: React.FC<Props> = ({
             {isAssignedToSelectedStudent
               ? `Assigned${selectedStudentName ? ` to ${selectedStudentName}` : ''}`
               : `Assign${selectedStudentName ? ` to ${selectedStudentName}` : ''}`}
+          </button>
+          <button
+            onClick={onEditExercises}
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shrink-0 bg-amber-50 text-amber-700 hover:bg-amber-100"
+            title="Edit exercises for this lesson"
+          >
+            <Edit3 size={14} />
+            Edit Exercises
           </button>
         </div>
 

@@ -1,13 +1,16 @@
 "use client";
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { LessonEditor } from '@/components/LessonEditor';
 import { CURRICULUM } from '@/data/curriculum';
 import { Suspense, useMemo } from 'react';
 
 function EditorContent({ params }: { params: { stageId: string, topicId: string, pointId: string } }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { stageId, topicId, pointId } = params;
+  const initialView = searchParams.get('view') === 'exercises' ? 'exercises' : 'material';
+  const backTarget = searchParams.get('back');
 
   const data = useMemo(() => {
     const stage = CURRICULUM.find(s => s.id === parseInt(stageId));
@@ -22,6 +25,11 @@ function EditorContent({ params }: { params: { stageId: string, topicId: string,
   if (!data) return <div>Curriculum point not found</div>;
 
   const handleBack = () => {
+    if (backTarget === 'present') {
+      router.push(`/tutor/present/${encodeURIComponent(pointId)}`);
+      return;
+    }
+
     const p = new URLSearchParams({ stage: stageId });
     router.push(`/tutor/curriculum?${p.toString()}`);
   };
@@ -33,6 +41,7 @@ function EditorContent({ params }: { params: { stageId: string, topicId: string,
       topic={data.topic}
       point={data.point}
       onBack={handleBack}
+      initialView={initialView}
     />
   );
 }
